@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Revienta Burbujas</title>
 <meta name="theme-color" content="#0d0b1f">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="../../manifest.webmanifest">
+<link rel="icon" href="icono.png">
+<link rel="apple-touch-icon" href="../../icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
@@ -32,6 +32,7 @@ canvas{display:block;max-width:100%;max-height:100%;aspect-ratio:400/560;border-
 .menu p{font-size:8px;color:var(--muted);text-align:center;line-height:1.8;margin:0;max-width:300px}
 .menu input{font:inherit;font-size:18px;text-align:center;letter-spacing:.3em;text-transform:uppercase;width:240px;max-width:100%;padding:12px;border-radius:10px;border:2px solid var(--muted);background:var(--bg);color:var(--fg)}
 .err{color:var(--p2)!important}
+.menu button.home{font-size:8px;padding:10px 14px;width:auto;margin-top:6px;background:var(--bg);color:var(--muted);border:2px solid var(--panel)}
 #pads{display:flex;gap:12px;width:100%;max-width:560px}
 .pad{flex:1;display:flex;gap:6px;min-width:0}
 .pad button{flex:1;font:inherit;font-size:18px;padding:16px 0;border:0;border-radius:10px;background:var(--panel);color:var(--fg);touch-action:none;min-width:0}
@@ -57,6 +58,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
     <button id="mh" class="b3">CREAR PARTIDA</button>
     <button id="mj" class="bq">UNIRSE CON CÓDIGO</button>
     <p id="mmsg"></p>
+    <button id="mhome" class="bq home">◀ MENÚ RETROGAMING</button>
   </div>
   <div class="menu" id="join" hidden>
     <h1>UNIRSE</h1>
@@ -342,6 +344,9 @@ function doJoin(){const c=$('code').value.trim().toUpperCase();
 $('jgo').onclick=doJoin;
 $('code').addEventListener('keydown',e=>{if(e.key==='Enter')doJoin();e.stopPropagation()});
 $('quit').onclick=toMenu;
+const toLauncher=()=>{closeNet();location.href='../../'};
+$('mhome').onclick=toLauncher;
+addEventListener('keydown',e=>{if(e.key==='Escape'&&mode==='menu'&&!$('menu').hidden)toLauncher()});
 
 /* ---------- mandos físicos ---------- */
 const prev=[{},{}];
@@ -375,7 +380,7 @@ document.querySelectorAll('.pad button').forEach(b=>{
   b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);b.addEventListener('pointercancel',off);b.addEventListener('pointerleave',off);
 });
 document.addEventListener('contextmenu',e=>e.preventDefault());
-if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('../../sw.js').catch(()=>{}));
 </script>
 </body>
 </html>

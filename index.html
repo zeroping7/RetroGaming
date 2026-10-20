@@ -169,9 +169,10 @@ function topic(t){return 'revienta-burbujas/v2/'+code+'/'+t}
 function connect(onReady,onFail){
   if(typeof mqtt==='undefined'){onFail('Sin conexión: el modo online necesita internet.');return}
   const gen=++netGen;let ready=false,failed=0;seqOut=Math.max(seqOut,Date.now());
-  BROKERS.forEach(b=>{
+  BROKERS.forEach((b,i)=>{
     let cl;
     try{cl=mqtt.connect(b.url,{clientId:'rb_'+Math.random().toString(36).slice(2,12),clean:true,connectTimeout:8000,reconnectPeriod:3000,keepalive:20,username:b.user,password:b.pass})}catch(e){failed++;return}
+    cl.__i=i;
     cl.on('connect',()=>{
       if(gen!==netGen){try{cl.end(true)}catch(e){}return}
       if(!mq.includes(cl))mq.push(cl);
@@ -183,6 +184,7 @@ function connect(onReady,onFail){
   setTimeout(()=>{if(gen===netGen&&!ready){closeNet();onFail('No se pudo conectar al servidor. Revisa la conexión.')}},10000);
 }
 let pendingSub=null;
+function netInfo(){return BROKERS.map((b,i)=>(mq.some(c=>c.connected&&c.options&&c.__i===i)?'✓':'✗')+(i+1)).join(' ')}
 function publish(t,d){const m=JSON.stringify(d);for(const c of mq){try{if(c.connected)c.publish(t,m,{qos:0})}catch(e){}}}
 function onMsg(tp,d){
   if(!d||typeof d!=='object')return;
@@ -236,6 +238,7 @@ function draw(){
   if(st.state==='wait'){
     if(mode==='host'){txt('CÓDIGO',200,12,'#a59fd6');txt(code,250,36,'#ffcf3a');txt('Esperando a tu',310,10);txt('compañero…',330,10)}
     else{txt('PARTIDA '+code,230,12,'#ffcf3a');txt('Conectando con',280,10);txt('el anfitrión…',300,10)}
+    txt('Servidores: '+netInfo(),400,8,'#a59fd6');
     return;
   }
   st.ps.forEach((p,i)=>{
@@ -262,6 +265,7 @@ function draw(){
   x.textAlign='right';x.fillText('NIVEL '+st.lvl,W-10,FLOOR+20);
   x.textAlign='left';x.fillStyle='#ff6fae';x.fillText('♥'.repeat(Math.max(0,Math.min(9,st.lives))),10,FLOOR+36);
   x.textAlign='right';x.fillStyle='#a59fd6';x.fillText(mode==='local'?'RÉCORD '+best:'ONLINE '+code,W-10,FLOOR+36);
+  if(mode!=='local'){x.fillStyle='#a59fd6';x.font='7px "Press Start 2P", monospace';x.textAlign='left';x.fillText(netInfo(),8,14)}
   if(st.state==='ready')txt('NIVEL '+st.lvl,250,18,'#ffcf3a');
   if(st.state==='clear')txt('¡LIMPIO! +500',250,16,'#5ee6c2');
   if(st.state==='over'){txt('FIN DE PARTIDA',230,18,'#ff6fae');txt('Pulsa disparo',270,10)}

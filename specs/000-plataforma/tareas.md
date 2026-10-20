@@ -20,4 +20,7 @@
 ## Fase 2 — Según respuestas de la spec
 - [ ] T020 — Pausa común (HU-7)
 - [ ] T021 — Aviso de código de otro juego (HU-5)
-- [ ] T022 — Enlace para compartir la partida (si se aprueba)
+- [ ] T022 — Enlace para compartir la partida (HU-9, plan §6; tras T011)
+  - Hecho cuando: el invitado entra en una partida de Revienta Burbujas tocando el enlace, sin escribir el código.
+- [ ] T023 — Orientación por juego (HU-10, plan §7)
+  - Hecho cuando: en la app instalada el menú gira a horizontal y Revienta Burbujas en horizontal muestra "Gira el móvil".

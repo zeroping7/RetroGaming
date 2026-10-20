@@ -1,6 +1,6 @@
 # Spec de funcionalidad: Plataforma (menú, partidas y controles)
 
-> **ID:** 000-plataforma · **Estado:** Aprobada (menú implementado; resto en `tareas.md`) · **Fecha:** 2026-10-20
+> **ID:** 000-plataforma · **Estado:** Aprobada (menú implementado; resto en `tareas.md`) · **Fecha:** 2026-10-20 · **Actualizada:** 2026-10-21 (HU-9 y HU-10)
 
 ## 1. Problema
 Faltaba la base común: un menú para elegir juego, una forma de jugar con otra persona a distancia y unos controles iguales en todos los juegos.
@@ -45,6 +45,15 @@ Abrir la web desde cualquier dispositivo, elegir un juego como en una consola re
 **HU-8 — Corte de conexión.**
 - [x] Si se deja de recibir 4 s, ambos ven "Esperando…" hasta que vuelve.
 
+**HU-9 — Compartir la partida con un enlace.** Como anfitrión, quiero mandar un enlace (p. ej. por WhatsApp) para que mi compañero entre sin escribir el código.
+- [ ] Al crear partida, junto al código veo "Compartir", que abre las apps del móvil; si el dispositivo no lo permite, copia el enlace y avisa.
+- [ ] Al abrir el enlace, el invitado entra en ese juego y se une directamente a la partida.
+- [ ] Si la partida ya no existe, ve el mismo aviso que con un código incorrecto.
+
+**HU-10 — Orientación.** Como jugador, quiero que cada juego use la orientación que mejor le va.
+- [ ] La app instalada no fija la orientación: el menú funciona en vertical y en horizontal.
+- [ ] Cada juego indica en su spec si es vertical u horizontal; si tengo el móvil al revés, veo "Gira el móvil".
+
 ## 4. Requisitos no funcionales
 - Menú interactivo en < 3 s con 4G (R4).
 - `?debug=1` y `?lag=&loss=` (Q1, Q2) en el módulo de red compartido.
@@ -56,7 +65,7 @@ Abrir la web desde cualquier dispositivo, elegir un juego como en una consola re
 
 ## 6. Preguntas abiertas
 - [x] Nombre del proyecto → **RetroGaming**.
-- [ ] ¿Además del código, un enlace para compartir por WhatsApp que entre directo en la partida?
-- [ ] ¿Juegos en horizontal? Hoy la app instalada está fijada en vertical.
-- [ ] ¿Las carreras serán cooperativas o uno contra otro?
-- [ ] ¿Cuál es el siguiente juego?
+- [x] ¿Además del código, un enlace para compartir por WhatsApp que entre directo en la partida? → **Sí**, código + enlace (HU-9).
+- [x] ¿Juegos en horizontal? → **Cada juego elige** su orientación (HU-10).
+- [x] ¿Las carreras serán cooperativas o uno contra otro? → **Uno contra otro**.
+- [x] ¿Cuál es el siguiente juego? → Uno de **puzzle/tablero** (será la spec 002).

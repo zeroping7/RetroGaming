@@ -1,6 +1,6 @@
 # Plan técnico: Plataforma
 
-> **Spec:** `specs/000-plataforma/spec.md` · **Estado:** Aprobado · **Fecha:** 2026-10-20
+> **Spec:** `specs/000-plataforma/spec.md` · **Estado:** Aprobado (§6 y §7 pendientes de aprobar) · **Fecha:** 2026-10-20 · **Actualizado:** 2026-10-21
 
 ## 1. Cumplimiento de la constitución
 - [x] P1 Sin build: `index.html` + `css/lanzador.css` + módulos ES en `src/`
@@ -38,3 +38,17 @@ Con `?lag=` y `?loss=` aplicados dentro de `enviar`.
 ## 5. Pruebas
 - Manual en móvil: deslizar, tocar, entrar, volver atrás, girar a horizontal.
 - PC: flechas, Enter, mando USB.
+
+## 6. Enlace para compartir (HU-9) — pendiente de aprobar
+- Formato: `https://zeroping7.github.io/RetroGaming/juegos/<id>/?sala=ABCD`.
+- `src/net/` añade `enlaceDePartida(idJuego, codigo)` y `codigoDeUrl()` (valida el alfabeto de `docs/arquitectura.md` §4), para que valga en todos los juegos.
+- Botón "Compartir" junto al código: `navigator.share({ title, text, url })`; si no existe o falla, `navigator.clipboard.writeText(url)` y aviso "Enlace copiado".
+- Al cargar un juego con `?sala=` válido se salta su menú y entra como invitado con ese código. Después se quita de la URL con `history.replaceState`, para que recargar no vuelva a unirse.
+- Depende de T011 (Revienta Burbujas ya usando `src/net/`).
+
+## 7. Orientación (HU-10) — pendiente de aprobar
+- Quitar `"orientation"` de `manifest.webmanifest`. El menú ya se adapta a horizontal (`css/lanzador.css`).
+- Nuevo campo `orientacion: 'vertical' | 'horizontal' | 'libre'` en `juegos/registro.js` (contrato en `docs/arquitectura.md` §3). Revienta Burbujas: `'vertical'`.
+- Si el móvil no está en la orientación del juego, una capa "Gira el móvil" tapa la pantalla (y pausa, cuando exista T020). Se detecta con `matchMedia('(orientation: …)')`.
+- No se usa `screen.orientation.lock()`: solo funciona en pantalla completa y no existe en iOS.
+- En la app ya instalada, Chrome tarda en aplicar el manifest nuevo; desinstalar y reinstalar lo fuerza.

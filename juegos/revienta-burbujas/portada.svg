@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 260" width="240" height="260">
+  <defs>
+    <linearGradient id="cielo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#241d5c"/>
+      <stop offset="1" stop-color="#0f0c2b"/>
+    </linearGradient>
+  </defs>
+  <rect width="240" height="260" fill="url(#cielo)"/>
+
+  <!-- burbujas -->
+  <circle cx="152" cy="88" r="46" fill="#ff7a4d"/>
+  <circle cx="136" cy="72" r="11" fill="#fff" fill-opacity=".55"/>
+  <circle cx="66" cy="128" r="28" fill="#6fa8ff"/>
+  <circle cx="56" cy="118" r="7" fill="#fff" fill-opacity=".55"/>
+  <circle cx="198" cy="172" r="16" fill="#5ee6c2"/>
+  <circle cx="192" cy="166" r="4" fill="#fff" fill-opacity=".55"/>
+  <circle cx="102" cy="40" r="9" fill="#ff6fae"/>
+  <circle cx="99" cy="37" r="2.5" fill="#fff" fill-opacity=".55"/>
+
+  <!-- arpones -->
+  <line x1="66" y1="191" x2="66" y2="166" stroke="#ffcf3a" stroke-width="3" stroke-dasharray="6 4"/>
+  <polygon points="60,168 66,158 72,168" fill="#ffcf3a"/>
+  <line x1="170" y1="191" x2="170" y2="142" stroke="#ff8fc7" stroke-width="3" stroke-dasharray="6 4"/>
+  <polygon points="164,144 170,134 176,144" fill="#ff8fc7"/>
+
+  <!-- suelo -->
+  <rect y="225" width="240" height="35" fill="#3a2f86"/>
+  <g fill="#5446b8" shape-rendering="crispEdges">
+    <rect x="0" y="225" width="10" height="4"/><rect x="20" y="225" width="10" height="4"/>
+    <rect x="40" y="225" width="10" height="4"/><rect x="60" y="225" width="10" height="4"/>
+    <rect x="80" y="225" width="10" height="4"/><rect x="100" y="225" width="10" height="4"/>
+    <rect x="120" y="225" width="10" height="4"/><rect x="140" y="225" width="10" height="4"/>
+    <rect x="160" y="225" width="10" height="4"/><rect x="180" y="225" width="10" height="4"/>
+    <rect x="200" y="225" width="10" height="4"/><rect x="220" y="225" width="10" height="4"/>
+  </g>
+
+  <!-- jugador 1 -->
+  <g shape-rendering="crispEdges">
+    <rect x="56" y="203" width="20" height="22" fill="#2ec4b6"/>
+    <rect x="59" y="191" width="14" height="13" fill="#ffd9b0"/>
+    <rect x="62" y="196" width="3" height="3" fill="#0d0b1f"/>
+    <rect x="67" y="196" width="3" height="3" fill="#0d0b1f"/>
+    <rect x="57" y="188" width="18" height="5" fill="#e94f37"/>
+  </g>
+
+  <!-- jugador 2 -->
+  <g shape-rendering="crispEdges">
+    <rect x="160" y="203" width="20" height="22" fill="#ff8fc7"/>
+    <rect x="163" y="191" width="14" height="13" fill="#ffd9b0"/>
+    <rect x="166" y="196" width="3" height="3" fill="#0d0b1f"/>
+    <rect x="171" y="196" width="3" height="3" fill="#0d0b1f"/>
+    <rect x="161" y="188" width="18" height="5" fill="#7b5cff"/>
+  </g>
+</svg>

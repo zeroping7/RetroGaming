@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>RetroGaming</title>
+<meta name="description" content="Consola de juegos retro en el navegador, para jugar solo o con otra persona.">
+<meta name="theme-color" content="#0d0b1f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
+<link rel="stylesheet" href="css/lanzador.css">
+<script type="module" src="src/lanzador.js"></script>
+</head>
+<body>
+<header class="cabecera">
+  <h1 class="logo">RETROGAMING</h1>
+</header>
+
+<main class="consola">
+  <div class="bandeja">
+    <ul class="estante" id="estante" aria-label="Juegos"></ul>
+    <div class="base" aria-hidden="true"><span class="led"></span></div>
+  </div>
+
+  <section class="ficha" aria-live="polite">
+    <h2 id="f-titulo" class="oculto">Cargando…</h2>
+    <p id="f-desc"></p>
+    <ul class="datos" id="f-datos"></ul>
+    <button id="jugar" class="jugar" type="button" disabled>JUGAR</button>
+  </section>
+</main>
+
+<footer class="pie">
+  <p class="ayuda" id="ayuda"></p>
+  <p class="version" id="version"></p>
+</footer>
+
+<div class="fundido" aria-hidden="true"></div>
+
+<noscript><p class="sinjs">Activa JavaScript para usar el menú, o abre directamente <a href="juegos/revienta-burbujas/">Revienta Burbujas</a>.</p></noscript>
+
+<script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
+</body>
+</html>

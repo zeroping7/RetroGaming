@@ -1,0 +1,132 @@
+/* Menú de RetroGaming: estante de cartuchos sobre una consola. Misma paleta que Revienta Burbujas. */
+:root{
+  --bg:#0d0b1f; --panel:#1a1640; --carcasa:#2d2574; --carcasa-baja:#1f1955;
+  --fg:#f4f1ff; --muted:#a59fd6; --p1:#2ec4b6; --p2:#ff8fc7; --accent:#ffcf3a; --sombra:#5a2bd6;
+  --px:"Press Start 2P",ui-monospace,monospace;
+  --crt:"VT323",ui-monospace,monospace;
+  --cw:min(60vw,240px,32vh);      /* ancho de un cartucho */
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{height:100%;background:var(--bg)}
+body{
+  margin:0;min-height:100%;min-height:100dvh;display:flex;flex-direction:column;
+  background:var(--bg);color:var(--fg);font-family:var(--crt);
+  padding:max(12px,env(safe-area-inset-top)) 0 max(12px,env(safe-area-inset-bottom));
+  overflow-x:hidden;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
+}
+/* líneas de tubo de imagen, estáticas */
+body::after{content:"";position:fixed;inset:0;z-index:5;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.2) 0 1px,transparent 1px 3px)}
+
+.cabecera{text-align:center;padding:8px 16px 0}
+.logo{margin:0;font:400 clamp(18px,6.4vw,30px)/1.2 var(--px);color:var(--accent);
+  text-shadow:3px 3px 0 var(--sombra);letter-spacing:.03em}
+
+.consola{flex:1;min-height:0;width:100%;max-width:960px;margin:0 auto;
+  display:flex;flex-direction:column;justify-content:center}
+
+/* ---------- estante de cartuchos ---------- */
+.estante{
+  position:relative;list-style:none;margin:0;display:flex;gap:10px;
+  padding:26px calc(50% - var(--cw) / 2) 4px;
+  overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;
+  scrollbar-width:none;touch-action:pan-x pan-y;
+}
+.estante::-webkit-scrollbar{display:none}
+.estante>li{flex:0 0 var(--cw);scroll-snap-align:center}
+
+.cartucho{
+  appearance:none;border:0;background:none;padding:0;margin:0;color:inherit;font:inherit;
+  display:block;width:100%;cursor:pointer;
+  transform:scale(.84);transform-origin:50% 100%;opacity:.5;
+  transition:transform .16s steps(3),opacity .16s;
+}
+.cartucho:focus{outline:none}
+.cartucho[aria-current="true"]{
+  transform:none;opacity:1;
+  /* contorno de píxel que sigue la forma recortada */
+  filter:drop-shadow(3px 0 0 var(--accent)) drop-shadow(-3px 0 0 var(--accent))
+         drop-shadow(0 -3px 0 var(--accent)) drop-shadow(0 3px 0 var(--accent));
+}
+.carcasa{
+  display:flex;flex-direction:column;gap:8px;aspect-ratio:10/13;padding:12px;
+  background:linear-gradient(180deg,var(--carcasa),var(--carcasa-baja));
+  clip-path:polygon(14% 0,86% 0,100% 7%,100% 100%,0 100%,0 7%);
+}
+.estrias{flex:0 0 12px;margin:0 12%;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.16) 0 4px,transparent 4px 9px)}
+.etiqueta{flex:1;min-height:0;display:block;padding:5px;border-radius:4px;background:var(--etiqueta,var(--p2))}
+.etiqueta img{display:block;width:100%;height:100%;object-fit:cover;border-radius:2px}
+.nombre{flex:0 0 2.8em;display:flex;align-items:center;justify-content:center;
+  font:8px/1.5 var(--px);text-align:center;color:var(--fg)}
+
+.vacio{cursor:default}
+.vacio .carcasa{background:linear-gradient(180deg,#1e1848,#151236)}
+.vacio .etiqueta{background:transparent;border:2px dashed rgba(165,159,214,.4);
+  display:flex;align-items:center;justify-content:center;
+  font:8px/1.6 var(--px);color:var(--muted);text-align:center}
+.vacio .nombre{color:var(--muted)}
+
+/* ---------- consola: ranura y piloto ---------- */
+.base{position:relative;height:38px;margin:0 16px;border-radius:8px 8px 14px 14px;
+  background:linear-gradient(#241d58,#15113a);box-shadow:inset 0 2px 0 rgba(255,255,255,.08)}
+.base::before{content:"";position:absolute;left:50%;top:5px;transform:translateX(-50%);
+  width:calc(var(--cw) + 18px);height:9px;border-radius:3px;background:#05040d;box-shadow:inset 0 3px 3px #000}
+.led{position:absolute;right:16px;bottom:9px;width:8px;height:8px;border-radius:2px;
+  background:var(--p1);box-shadow:0 0 8px var(--p1)}
+
+/* ---------- ficha del juego seleccionado ---------- */
+.ficha{display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px 16px 4px;text-align:center}
+.oculto{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.ficha p{margin:0;max-width:30ch;font-size:22px;line-height:1.05;color:var(--muted)}
+.datos{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.datos li{padding:3px 8px 4px;border:2px solid var(--panel);border-radius:6px;font-size:20px;line-height:1}
+.datos .record{border-color:var(--accent);color:var(--accent)}
+.jugar{margin-top:6px;padding:16px 36px;border:0;border-radius:10px;cursor:pointer;
+  font:400 13px/1 var(--px);background:var(--accent);color:#2a1b00;box-shadow:0 5px 0 #b38600}
+.jugar:active:not(:disabled){transform:translateY(5px);box-shadow:none}
+.jugar:disabled{background:var(--panel);color:var(--muted);box-shadow:0 5px 0 #0a0818;cursor:default}
+.jugar:focus-visible{outline:3px solid var(--fg);outline-offset:5px}
+
+/* ---------- pie ---------- */
+.pie{width:100%;max-width:960px;margin:0 auto;padding:12px 16px 0;
+  display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:20px;color:var(--muted)}
+.pie p{margin:0}
+.ayuda span{white-space:nowrap;margin-right:14px}
+kbd{display:inline-block;margin-right:6px;padding:4px 6px 3px;vertical-align:2px;
+  border:2px solid var(--muted);border-bottom-width:4px;border-radius:5px;font:8px/1 var(--px);color:var(--fg)}
+.version{font:8px/1 var(--px);opacity:.7}
+.sinjs{font-size:22px;padding:16px;text-align:center}
+.sinjs a{color:var(--accent)}
+
+/* ---------- al lanzar: el cartucho entra en la ranura ---------- */
+.fundido{position:fixed;inset:0;z-index:6;pointer-events:none;background:var(--bg);opacity:0}
+.lanzando .cartucho[aria-current="true"]{transform:translateY(108%);
+  transition:transform .3s cubic-bezier(.55,0,.8,.2)}
+.lanzando .led{background:var(--accent);box-shadow:0 0 12px var(--accent)}
+.lanzando .fundido{opacity:1;transition:opacity .2s .28s}
+
+/* ---------- móvil en horizontal ---------- */
+@media (orientation:landscape) and (max-height:540px){
+  :root{--cw:min(34vh,160px)}
+  .cabecera{padding-top:0}
+  .logo{font-size:16px}
+  .consola{flex-direction:row;align-items:center;gap:8px}
+  .bandeja{flex:1.2;min-width:0}
+  .ficha{flex:1;padding:0 16px}
+  .estante{padding-top:14px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .cartucho,.lanzando .cartucho[aria-current="true"],.lanzando .fundido{transition:none}
+}
+
+/* ---------- móviles bajitos en vertical ---------- */
+@media (orientation:portrait) and (max-height:700px){
+  .estante{padding-top:16px}
+  .ficha{padding-top:12px;gap:8px}
+  .ficha p{font-size:20px}
+  .jugar{padding:14px 32px}
+}

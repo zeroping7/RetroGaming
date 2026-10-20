@@ -1,6 +1,7 @@
 {
-  "name": "Revienta Burbujas",
-  "short_name": "Burbujas",
+  "name": "RetroGaming",
+  "short_name": "RetroGaming",
+  "description": "Consola de juegos retro para jugar solo o con otra persona.",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",

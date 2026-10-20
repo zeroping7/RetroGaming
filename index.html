@@ -80,7 +80,7 @@ const PCOL=[{body:'#2ec4b6',hat:'#e94f37',shot:'#ffcf3a'},{body:'#ff8fc7',hat:'#
 const G=900,$=id=>document.getElementById(id),PREFIX='revienta-burbujas-v1-';
 const keys=[{l:false,r:false,f:false},{l:false,r:false,f:false}];
 let st={state:'menu'},best=0,mode='menu',code='',guestIn={l:false,r:false,f:false},lastSent='';
-let hostState=null,sendAcc=0,gview=null,lastSnap=-1,hostTargetX=0,guestX=null,echoT=0,echoAt=0,lat=0.15,localShotAt=0;
+let hostState=null,sendAcc=0,gview=null,lastSnap=-1,hostTargetX=0,hostDir=0,guestX=null,echoT=0,echoAt=0,lat=0.15,localShotAt=0;
 try{best=+localStorage.getItem('rb-best')||0}catch(e){}
 
 /* ---------- simulación ---------- */
@@ -143,7 +143,7 @@ function update(dt){
 const SN=['ready','play','dead','clear','over'];
 function encode(){
   const b=[];for(const o of st.balls)b.push(o.s,Math.round(o.x),Math.round(o.y),Math.round(o.vx),Math.round(o.vy));
-  const p=[];for(const o of st.ps)p.push(Math.round(o.x),o.shot?Math.round(o.shot.x):-1,o.shot?Math.round(o.shot.top):-1);
+  const p=[];st.ps.forEach((o,i)=>{const k=inputOf(i);p.push(Math.round(o.x),o.shot?Math.round(o.shot.x):-1,o.shot?Math.round(o.shot.top):-1,(k.r?1:0)-(k.l?1:0))});
   const q=[];for(const o of st.pop)q.push(Math.round(o.x),Math.round(o.y),o.s,Math.round(o.t*100));
   return{m:SN.indexOf(st.state),t:Math.round(st.t*10),v:st.lvl,sc:st.score,li:st.lives,h:st.hit,b,p,q};
 }
@@ -151,7 +151,7 @@ function decode(d){
   if(!d||!Array.isArray(d.b)||!Array.isArray(d.p))return null;
   const s={n:2,state:SN[d.m]||'play',t:(+d.t||0)/10,lvl:+d.v||1,score:+d.sc||0,lives:+d.li||0,hit:+d.h,balls:[],ps:[],pop:[]};
   for(let i=0;i+4<d.b.length&&s.balls.length<80;i+=5){const sz=d.b[i]|0;if(sz>=1&&sz<=4)s.balls.push({s:sz,x:+d.b[i+1],y:+d.b[i+2],vx:+d.b[i+3]||0,vy:+d.b[i+4]||0})}
-  for(let i=0;i+2<d.p.length&&s.ps.length<2;i+=3)s.ps.push({x:+d.p[i],w:26,h:34,shot:d.p[i+1]>=0?{x:+d.p[i+1],top:+d.p[i+2]}:null});
+  for(let i=0;i+3<d.p.length&&s.ps.length<2;i+=4)s.ps.push({x:+d.p[i],w:26,h:34,dir:Math.max(-1,Math.min(1,d.p[i+3]|0)),shot:d.p[i+1]>=0?{x:+d.p[i+1],top:+d.p[i+2]}:null});
   if(Array.isArray(d.q))for(let i=0;i+3<d.q.length&&s.pop.length<40;i+=4){const sz=d.q[i+2]|0;if(sz>=1&&sz<=4)s.pop.push({x:+d.q[i],y:+d.q[i+1],s:sz,t:d.q[i+3]/100})}
   return s;
 }
@@ -242,7 +242,7 @@ function guestStep(dt){
       if(s.state==='play'){for(let t=ahead;t>0;t-=1/60)stepBalls(s.balls,Math.min(1/60,t));
         for(const p of s.ps)if(p.shot){p.shot.top-=520*ahead;if(p.shot.top<=0)p.shot=null}}
       const keep=gview&&gview.state==='play'&&s.state==='play'&&gview.ps&&gview.ps.length===2;
-      hostTargetX=s.ps[0].x;
+      hostTargetX=s.ps[0].x+(s.state==='play'?s.ps[0].dir*220*ahead:0);hostDir=s.ps[0].dir;
       if(keep){
         s.ps[0].x=gview.ps[0].x;s.ps[1].x=gview.ps[1].x;
         // mi disparo local sigue hasta que el anfitrión lo confirme
@@ -261,7 +261,8 @@ function guestStep(dt){
   const me=v.ps[1],k=keys[0];
   if(k.l)me.x-=220*dt;if(k.r)me.x+=220*dt;me.x=Math.max(13,Math.min(W-13,me.x));
   if(k.f&&!me.shot){me.shot={x:me.x,top:FLOOR-me.h};localShotAt=now}
-  v.ps[0].x+=(hostTargetX-v.ps[0].x)*Math.min(1,dt*12);
+  hostTargetX=Math.max(13,Math.min(W-13,hostTargetX+hostDir*220*dt));
+  v.ps[0].x+=(hostTargetX-v.ps[0].x)*Math.min(1,dt*20);
   for(const p of v.ps)if(p.shot){p.shot.top-=520*dt;if(p.shot.top<=0)p.shot=null}
   stepBalls(v.balls,dt);
   v.pop=v.pop.filter(q=>(q.t-=dt)>0);

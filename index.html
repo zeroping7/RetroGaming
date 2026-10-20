@@ -155,35 +155,53 @@ function decode(d){
   return s;
 }
 function randCode(){const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<4;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
-const BROKERS=['wss://broker.hivemq.com:8884/mqtt','wss://broker.emqx.io:8084/mqtt'];
-let mq=null,heardAt=0,helloAt=0,joinStart=0;
-function closeNet(){try{mq&&mq.end(true)}catch(e){}mq=null;hostState=null;heardAt=0}
+const BROKERS=[
+  {url:'wss://mqtt.eclipseprojects.io:443/mqtt'},
+  {url:'wss://public.cloud.shiftr.io:443',user:'public',pass:'public'},
+  {url:'wss://broker.hivemq.com:8884/mqtt'},
+  {url:'wss://broker.emqx.io:8084/mqtt'}
+];
+let mq=[],heardAt=0,helloAt=0,joinStart=0,seqOut=0,seqIn=-1,netGen=0;
+function closeNet(){netGen++;for(const c of mq){try{c.end(true)}catch(e){}}mq=[];hostState=null;heardAt=0;seqIn=-1}
 function enterOnline(asHost,c){code=c;mode=asHost?'host':'guest';st={state:'wait'};hideMenus();$('pad2').hidden=true;$('quit').hidden=false}
 function topic(t){return 'revienta-burbujas/v2/'+code+'/'+t}
-function connect(onReady,onFail,i=0){
+// Se conecta a todos los servidores a la vez: lo que se envía va por todos y lo recibido se acepta de cualquiera
+function connect(onReady,onFail){
   if(typeof mqtt==='undefined'){onFail('Sin conexión: el modo online necesita internet.');return}
-  if(i>=BROKERS.length){onFail('No se pudo conectar al servidor. Revisa la conexión.');return}
-  let done=false;
-  const cl=mqtt.connect(BROKERS[i],{clientId:'rb_'+Math.random().toString(36).slice(2,12),clean:true,connectTimeout:6000,reconnectPeriod:2000,keepalive:20});
-  const t=setTimeout(()=>{if(!done){done=true;try{cl.end(true)}catch(e){}connect(onReady,onFail,i+1)}},7000);
-  cl.on('connect',()=>{if(done)return;done=true;clearTimeout(t);mq=cl;onReady(cl)});
-  cl.on('message',(tp,buf)=>{let d;try{d=JSON.parse(buf.toString())}catch(e){return}onMsg(tp,d)});
+  const gen=++netGen;let ready=false,failed=0;seqOut=Math.max(seqOut,Date.now());
+  BROKERS.forEach(b=>{
+    let cl;
+    try{cl=mqtt.connect(b.url,{clientId:'rb_'+Math.random().toString(36).slice(2,12),clean:true,connectTimeout:8000,reconnectPeriod:3000,keepalive:20,username:b.user,password:b.pass})}catch(e){failed++;return}
+    cl.on('connect',()=>{
+      if(gen!==netGen){try{cl.end(true)}catch(e){}return}
+      if(!mq.includes(cl))mq.push(cl);
+      if(pendingSub)cl.subscribe(pendingSub,{qos:0});
+      if(!ready){ready=true;onReady()}
+    });
+    cl.on('message',(tp,buf)=>{let d;try{d=JSON.parse(buf.toString())}catch(e){return}onMsg(tp,d)});
+  });
+  setTimeout(()=>{if(gen===netGen&&!ready){closeNet();onFail('No se pudo conectar al servidor. Revisa la conexión.')}},10000);
 }
+let pendingSub=null;
+function publish(t,d){const m=JSON.stringify(d);for(const c of mq){try{if(c.connected)c.publish(t,m,{qos:0})}catch(e){}}}
 function onMsg(tp,d){
   if(!d||typeof d!=='object')return;
-  if(mode==='host'&&(tp===topic('in'))){heardAt=performance.now();guestIn={l:!!d.l,r:!!d.r,f:!!d.f}}
-  if(mode==='guest'&&tp===topic('st')){heardAt=performance.now();hostState=d}
+  if(typeof d.n!=='number')return;
+  if(mode==='host'&&tp===topic('in')){if(d.n<=seqIn&&seqIn-d.n<1000)return;seqIn=d.n;heardAt=performance.now();guestIn={l:!!d.l,r:!!d.r,f:!!d.f}}
+  if(mode==='guest'&&tp===topic('st')){if(d.n<=seqIn&&seqIn-d.n<1000)return;seqIn=d.n;heardAt=performance.now();hostState=d}
 }
 function host(msgEl){
   msgEl.className='';msgEl.textContent='Creando…';
   code=randCode();
-  connect(cl=>{cl.subscribe(topic('in'),{qos:0});enterOnline(true,code)},t=>{msgEl.className='err';msgEl.textContent=t});
+  pendingSub=topic('in');
+  connect(()=>{enterOnline(true,code)},t=>{msgEl.className='err';msgEl.textContent=t});
 }
 function joinGame(c){
   const m=$('jmsg');m.className='';m.textContent='Entrando…';code=c;
-  connect(cl=>{cl.subscribe(topic('st'),{qos:0});enterOnline(false,c);joinStart=performance.now();lastSent=''},t=>{m.className='err';m.textContent=t});
+  pendingSub=topic('st');
+  connect(()=>{enterOnline(false,c);joinStart=performance.now();lastSent=''},t=>{m.className='err';m.textContent=t});
 }
-function sendIn(){const k=keys[0];try{mq.publish(topic('in'),JSON.stringify({l:k.l,r:k.r,f:k.f}),{qos:0})}catch(e){}}
+function sendIn(){const k=keys[0];publish(topic('in'),{n:++seqOut,l:k.l,r:k.r,f:k.f})}
 function netTick(dt){
   const now=performance.now();
   if(mode==='host'){
@@ -191,14 +209,14 @@ function netTick(dt){
     if(st.state==='wait')newGame(2);
     return true;
   }
-  if(!mq)return false;
+  if(!mq.length)return false;
   const k=keys[0],s=(k.l?1:0)+(k.r?2:0)+(k.f?4:0)+'';
   if(s!==lastSent||now-helloAt>500){lastSent=s;helloAt=now;sendIn()}
   if(heardAt&&now-heardAt<4000)st=decode(hostState)||{state:'wait'};
   else{st={state:'wait'};if(!heardAt&&now-joinStart>15000){toMenu();$('mmsg').className='err';$('mmsg').textContent='No hay ninguna partida con ese código.'}}
   return false;
 }
-function sendState(dt){sendAcc+=dt;if(sendAcc<1/20)return;sendAcc=0;try{mq.publish(topic('st'),JSON.stringify(encode()),{qos:0})}catch(e){}}
+function sendState(dt){sendAcc+=dt;if(sendAcc<1/20)return;sendAcc=0;const e=encode();e.n=++seqOut;publish(topic('st'),e)}
 
 /* ---------- dibujo ---------- */
 function txt(s,y,size,col){x.fillStyle=col||'#f4f1ff';x.font=`${size}px "Press Start 2P", monospace`;x.textAlign='center';x.fillText(s,W/2,y)}

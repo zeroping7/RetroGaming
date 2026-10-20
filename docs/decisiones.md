@@ -65,7 +65,7 @@ Una entrada por decisión. Nunca se borran; si cambian, se añade una nueva que 
 
 ## D-008 — Enlace para unirse con `?sala=`
 - Fecha: 2026-10-21
-- Estado: Propuesta (se acepta al aprobar el plan de 000, §6)
+- Estado: Aceptada
 - Contexto: escribir el código es incómodo; se decide poder compartir un enlace.
 - Decisión: `juegos/<id>/?sala=CODIGO`, compartido con `navigator.share` (o copiado al portapapeles). El código sigue existiendo.
 - Alternativas descartadas: código en el hash `#` (menos claro); enlace al menú principal (un paso más para el invitado).

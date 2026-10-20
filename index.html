@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <style>
 :root{--bg:#0d0b1f;--panel:#1a1640;--fg:#f4f1ff;--muted:#a59fd6;--p1:#2ec4b6;--p2:#ff8fc7;--accent:#ffcf3a;--px:"Press Start 2P",ui-monospace,monospace;color-scheme:dark;
   padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -80,7 +80,7 @@ const PCOL=[{body:'#2ec4b6',hat:'#e94f37',shot:'#ffcf3a'},{body:'#ff8fc7',hat:'#
 const G=900,$=id=>document.getElementById(id),PREFIX='revienta-burbujas-v1-';
 const keys=[{l:false,r:false,f:false},{l:false,r:false,f:false}];
 let st={state:'menu'},best=0,mode='menu',code='',guestIn={l:false,r:false,f:false},lastSent='';
-let peer=null,conn=null,hostState=null,sendAcc=0;
+let hostState=null,sendAcc=0;
 try{best=+localStorage.getItem('rb-best')||0}catch(e){}
 
 /* ---------- simulación ---------- */
@@ -138,7 +138,7 @@ function update(dt){
   if(st.score>best){best=st.score;try{localStorage.setItem('rb-best',best)}catch(e){}}
 }
 
-/* ---------- red (PeerJS): el anfitrión simula, el invitado envía mandos y dibuja ---------- */
+/* ---------- red (servidor MQTT público): el anfitrión simula, el invitado envía mandos y dibuja ---------- */
 const SN=['ready','play','dead','clear','over'];
 function encode(){
   const b=[];for(const o of st.balls)b.push(o.s,Math.round(o.x),Math.round(o.y));
@@ -155,52 +155,50 @@ function decode(d){
   return s;
 }
 function randCode(){const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<4;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
-function closeNet(){try{conn&&conn.close()}catch(e){}try{peer&&peer.destroy()}catch(e){}peer=null;conn=null;hostState=null}
+const BROKERS=['wss://broker.hivemq.com:8884/mqtt','wss://broker.emqx.io:8084/mqtt'];
+let mq=null,heardAt=0,helloAt=0,joinStart=0;
+function closeNet(){try{mq&&mq.end(true)}catch(e){}mq=null;hostState=null;heardAt=0}
 function enterOnline(asHost,c){code=c;mode=asHost?'host':'guest';st={state:'wait'};hideMenus();$('pad2').hidden=true;$('quit').hidden=false}
-function host(msgEl,tries=0){
-  if(typeof Peer==='undefined'){msgEl.className='err';msgEl.textContent='Sin conexión: el modo online necesita internet.';return}
-  const c=randCode();msgEl.className='';msgEl.textContent='Creando…';
-  peer=new Peer(PREFIX+c);
-  peer.on('open',()=>{enterOnline(true,c)});
-  peer.on('connection',k=>{
-    if(conn&&conn.open){k.on('open',()=>k.close());return}
-    conn=k;k.on('data',d=>{if(d&&typeof d==='object')guestIn={l:!!d.l,r:!!d.r,f:!!d.f}});
-    k.on('close',()=>{if(conn===k){conn=null;guestIn={l:false,r:false,f:false};st={state:'wait'}}});
-  });
-  peer.on('disconnected',()=>{try{peer.reconnect()}catch(e){}});
-  peer.on('error',e=>{
-    if(e.type==='unavailable-id'&&tries<3){closeNet();host(msgEl,tries+1);return}
-    if(mode==='menu'){msgEl.className='err';msgEl.textContent='No se pudo crear la partida. Revisa la conexión.';closeNet()}
-  });
+function topic(t){return 'revienta-burbujas/v2/'+code+'/'+t}
+function connect(onReady,onFail,i=0){
+  if(typeof mqtt==='undefined'){onFail('Sin conexión: el modo online necesita internet.');return}
+  if(i>=BROKERS.length){onFail('No se pudo conectar al servidor. Revisa la conexión.');return}
+  let done=false;
+  const cl=mqtt.connect(BROKERS[i],{clientId:'rb_'+Math.random().toString(36).slice(2,12),clean:true,connectTimeout:6000,reconnectPeriod:2000,keepalive:20});
+  const t=setTimeout(()=>{if(!done){done=true;try{cl.end(true)}catch(e){}connect(onReady,onFail,i+1)}},7000);
+  cl.on('connect',()=>{if(done)return;done=true;clearTimeout(t);mq=cl;onReady(cl)});
+  cl.on('message',(tp,buf)=>{let d;try{d=JSON.parse(buf.toString())}catch(e){return}onMsg(tp,d)});
+}
+function onMsg(tp,d){
+  if(!d||typeof d!=='object')return;
+  if(mode==='host'&&(tp===topic('in'))){heardAt=performance.now();guestIn={l:!!d.l,r:!!d.r,f:!!d.f}}
+  if(mode==='guest'&&tp===topic('st')){heardAt=performance.now();hostState=d}
+}
+function host(msgEl){
+  msgEl.className='';msgEl.textContent='Creando…';
+  code=randCode();
+  connect(cl=>{cl.subscribe(topic('in'),{qos:0});enterOnline(true,code)},t=>{msgEl.className='err';msgEl.textContent=t});
 }
 function joinGame(c){
-  const m=$('jmsg');
-  if(typeof Peer==='undefined'){m.className='err';m.textContent='Sin conexión: el modo online necesita internet.';return}
-  m.className='';m.textContent='Entrando…';
-  peer=new Peer();
-  peer.on('open',()=>{
-    conn=peer.connect(PREFIX+c,{serialization:'json'});
-    conn.on('open',()=>{enterOnline(false,c);lastSent=''});
-    conn.on('data',d=>{hostState=d});
-    conn.on('close',()=>{if(mode==='guest'){toMenu();$('mmsg').className='err';$('mmsg').textContent='La partida se ha cerrado.'}});
-  });
-  peer.on('error',e=>{
-    const t=e.type==='peer-unavailable'?'No existe ninguna partida con ese código.':'No se pudo conectar. Revisa la conexión.';
-    if(mode==='guest'){toMenu();$('mmsg').className='err';$('mmsg').textContent=t}else{m.className='err';m.textContent=t;closeNet()}
-  });
+  const m=$('jmsg');m.className='';m.textContent='Entrando…';code=c;
+  connect(cl=>{cl.subscribe(topic('st'),{qos:0});enterOnline(false,c);joinStart=performance.now();lastSent=''},t=>{m.className='err';m.textContent=t});
 }
+function sendIn(){const k=keys[0];try{mq.publish(topic('in'),JSON.stringify({l:k.l,r:k.r,f:k.f}),{qos:0})}catch(e){}}
 function netTick(dt){
+  const now=performance.now();
   if(mode==='host'){
-    if(!conn||!conn.open){if(st.state!=='wait')st={state:'wait'};return false}
+    if(!heardAt||now-heardAt>4000){if(st.state!=='wait')st={state:'wait'};guestIn={l:false,r:false,f:false};return false}
     if(st.state==='wait')newGame(2);
     return true;
   }
+  if(!mq)return false;
   const k=keys[0],s=(k.l?1:0)+(k.r?2:0)+(k.f?4:0)+'';
-  if(conn&&conn.open&&s!==lastSent){lastSent=s;try{conn.send({l:k.l,r:k.r,f:k.f})}catch(e){}}
-  st=decode(hostState)||{state:'wait'};
+  if(s!==lastSent||now-helloAt>500){lastSent=s;helloAt=now;sendIn()}
+  if(heardAt&&now-heardAt<4000)st=decode(hostState)||{state:'wait'};
+  else{st={state:'wait'};if(!heardAt&&now-joinStart>15000){toMenu();$('mmsg').className='err';$('mmsg').textContent='No hay ninguna partida con ese código.'}}
   return false;
 }
-function sendState(dt){sendAcc+=dt;if(sendAcc<1/30)return;sendAcc=0;try{conn.send(encode())}catch(e){}}
+function sendState(dt){sendAcc+=dt;if(sendAcc<1/20)return;sendAcc=0;try{mq.publish(topic('st'),JSON.stringify(encode()),{qos:0})}catch(e){}}
 
 /* ---------- dibujo ---------- */
 function txt(s,y,size,col){x.fillStyle=col||'#f4f1ff';x.font=`${size}px "Press Start 2P", monospace`;x.textAlign='center';x.fillText(s,W/2,y)}

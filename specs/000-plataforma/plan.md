@@ -18,13 +18,13 @@
 | `src/lanzador.js` | construir cartuchos desde el registro, selección, entrada, lanzar |
 | `juegos/registro.js` | datos de cada juego (`docs/arquitectura.md` §3) |
 | `src/version.js` | versión visible |
-| `src/input/` *(pendiente)* | acciones abstractas compartidas (teclado, mando, táctil) |
+| `src/input/entradas.js` | acciones abstractas compartidas (teclado, mando, táctil); API en `docs/arquitectura.md` §6 |
 | `src/net/` *(pendiente)* | sala MQTT compartida extraída de Revienta Burbujas |
 
 ## 3. Menú principal
 - Estante horizontal con `scroll-snap`; el cartucho más cercano al centro es el seleccionado.
 - Al moverse con teclado o mando se desplaza suavemente y, mientras dura, el scroll no cambia la selección.
-- Mando: sondeo con `requestAnimationFrame` solo tras `gamepadconnected`; repetición a los 350 ms y luego cada 160 ms; un botón que ya venía pulsado se ignora.
+- Teclado y mando vía `src/input/entradas.js` (desde v0.3.0): `left`/`right` eligen, `a` o `start` (salvo Esc) entran.
 - Al lanzar: clase `lanzando` (cartucho a la ranura + fundido) y navegación a los 480 ms; `pageshow` lo deshace al volver.
 
 ## 4. Módulo de red compartido (pendiente)

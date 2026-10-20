@@ -7,7 +7,8 @@ css/lanzador.css
 src/
   lanzador.js            # lógica del menú: selección, táctil, teclado, mando
   version.js             # export const VERSION = 'x.y.z'
-  input/  net/           # (pendiente) módulos compartidos — ver specs/000-plataforma/tareas.md
+  input/entradas.js      # controles compartidos: teclado, mando y táctil → acciones (§6)
+  net/                   # (pendiente) sala online compartida — ver specs/000-plataforma/tareas.md
 juegos/
   registro.js            # lista de juegos del menú (§3)
   <id>/
@@ -68,15 +69,33 @@ Opciones según el registro: **1 jugador**, **2 jugadores** (mismo dispositivo),
 - **B — Interpolación**: el invitado dibuja suavizando entre instantáneas; su personaje responde con el retardo de ida y vuelta.
 - **C — Predicción**: además, el invitado mueve su personaje al instante, adelanta la instantánea según el retardo medido y corrige suavemente las diferencias. Obligatorio para acción (plataformas, top-down, carreras). Revienta Burbujas usa este nivel.
 
-## 6. Entradas
-| Acción | Teclado | Mando | Táctil |
+## 6. Entradas (`src/input/entradas.js`)
+| Acción | Teclado (1 jugador) | Mando | Táctil |
 |---|---|---|---|
 | up/down/left/right | Flechas / WASD | Cruceta / stick izq. | Botones o joystick en pantalla |
 | a | Espacio / J | A | Botón A |
 | b | Shift / K | B | Botón B |
 | start | Enter / Esc | Start | Botón ☰ |
 
-Con 2 jugadores en el mismo dispositivo: J1 flechas + Espacio, J2 `A D W`; cada mando a un jugador.
+Con 2 jugadores en el mismo dispositivo: J1 flechas + Espacio (a) + Shift dcho. (b); J2 WASD + F (a) + G (b). Cada mando a un jugador, por orden de conexión. Un juego puede pasar su propio reparto en `teclas` (p. ej. Revienta Burbujas: J2 dispara con W).
+
+```js
+import { crearEntradas } from '../../src/input/entradas.js';
+const entradas = crearEntradas({
+  jugadores: 1,                       // 1 o 2
+  alPulsar(accion, jugador, info) {   // menús: cada pulsación y repeticiones de las direcciones
+    // info = { origen: 'teclado'|'mando'|'tactil', codigo: 'Escape'|..., repeticion }
+    return true;                      // true = usada (se evita la acción del navegador)
+  },
+  alCambiarDispositivo(d) {},         // para cambiar la ayuda en pantalla
+});
+entradas.estado(0).left;              // juegos: en cada tick, qué está pulsado (0 = J1, 1 = J2)
+entradas.botonTactil(el, 'a', 0);     // controles en pantalla (CSS: touch-action: none)
+entradas.destruir();
+```
+- Teclas por código físico (`KeyboardEvent.code`); se ignoran dentro de campos de texto y con Ctrl/Alt/Cmd.
+- Un botón del mando que ya venía pulsado al cargar la página no cuenta hasta soltarlo.
+- Las direcciones se repiten al mantenerlas: el teclado con su repetición propia; el mando a los 350 ms y luego cada 160 ms.
 
 ## 7. App instalable y caché
 - `sw.js`: primero red y, sin conexión, lo guardado. Al cambiar la lista `FILES`, subir `CACHE`.

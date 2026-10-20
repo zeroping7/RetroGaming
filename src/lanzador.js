@@ -1,6 +1,7 @@
 // Menú de RetroGaming: estante de cartuchos navegable con táctil, teclado y mando.
 import { JUEGOS } from '../juegos/registro.js';
 import { VERSION } from './version.js';
+import { crearEntradas } from './input/entradas.js';
 
 const $ = (id) => document.getElementById(id);
 const estante = $('estante');
@@ -175,10 +176,7 @@ const AYUDAS = {
   teclado: [['← →', 'elegir'], ['Enter', 'jugar']],
   mando: [['✚', 'elegir'], ['A', 'jugar']],
 };
-let dispositivo = '';
-function usar(d) {
-  if (d === dispositivo) return;
-  dispositivo = d;
+function pintarAyuda(d) {
   const ayuda = $('ayuda');
   ayuda.replaceChildren();
   for (const [tecla, accion] of AYUDAS[d]) {
@@ -189,50 +187,22 @@ function usar(d) {
     ayuda.append(s);
   }
 }
-usar(matchMedia('(pointer: coarse)').matches ? 'tactil' : 'teclado');
-addEventListener('pointerdown', (e) => usar(e.pointerType === 'touch' ? 'tactil' : 'teclado'), { passive: true });
 
-/* ---------- teclado ---------- */
-addEventListener('keydown', (e) => {
-  usar('teclado');
-  const k = e.key;
-  if (k === 'ArrowLeft' || k === 'a' || k === 'A') { mover(-1); e.preventDefault(); }
-  else if (k === 'ArrowRight' || k === 'd' || k === 'D') { mover(1); e.preventDefault(); }
-  else if ((k === 'Enter' || k === ' ') && !e.repeat) {
-    if (document.activeElement?.tagName === 'BUTTON') return; // el propio botón ya hace clic
+/* ---------- teclado y mando (src/input) ---------- */
+const entradas = crearEntradas({
+  alPulsar(accion, _jugador, info) {
+    if (accion === 'left') { mover(-1); return true; }
+    if (accion === 'right') { mover(1); return true; }
+    const entrar = accion === 'a' || (accion === 'start' && info.codigo !== 'Escape');
+    if (!entrar || info.repeticion) return false;
+    // Con teclado sobre un botón, el propio botón ya hace clic.
+    if (info.origen === 'teclado' && document.activeElement?.tagName === 'BUTTON') return false;
     lanzar();
-    e.preventDefault();
-  }
+    return true;
+  },
+  alCambiarDispositivo: pintarAyuda,
 });
-
-/* ---------- mando (Gamepad API) ---------- */
-let sondeando = false;
-function empezarSondeo() {
-  if (sondeando || !navigator.getGamepads) return;
-  sondeando = true;
-  let dirPrev = 0, repetirEn = 0, aPrev = true; // aPrev=true: ignora un botón que ya venía pulsado
-  const paso = (t) => {
-    let dir = 0, a = false;
-    for (const g of navigator.getGamepads()) {
-      if (!g || !g.connected) continue;
-      const eje = g.axes[0] || 0, b = (n) => !!g.buttons[n]?.pressed;
-      if (eje < -0.5 || b(14)) dir = -1;
-      else if (eje > 0.5 || b(15)) dir = 1;
-      if (b(0) || b(9)) a = true;
-    }
-    if (dir) {
-      if (dir !== dirPrev) { usar('mando'); mover(dir); repetirEn = t + 350; }
-      else if (t >= repetirEn) { mover(dir); repetirEn = t + 160; }
-    }
-    dirPrev = dir;
-    if (a && !aPrev) { usar('mando'); lanzar(); }
-    aPrev = a;
-    requestAnimationFrame(paso);
-  };
-  requestAnimationFrame(paso);
-}
-addEventListener('gamepadconnected', empezarSondeo);
-try { if ([...(navigator.getGamepads?.() || [])].some(Boolean)) empezarSondeo(); } catch {}
+pintarAyuda(entradas.dispositivo);
 
 /* ---------- arranque ---------- */
 seleccionar(0);

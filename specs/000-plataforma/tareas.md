@@ -10,8 +10,8 @@
 - [x] T005 — App instalable como "RetroGaming" (manifest, iconos, `sw.js`)
 
 ## Fase 1 — Piezas compartidas
-- [ ] T010 — `src/input/`: acciones abstractas (teclado, mando, táctil) como módulo
-  - Hecho cuando: el menú principal lo usa en lugar de su código propio
+- [x] T010 — `src/input/`: acciones abstractas (teclado, mando, táctil) como módulo
+  - Hecho cuando: el menú principal lo usa en lugar de su código propio *(v0.3.0)*
 - [ ] T011 — `src/net/`: sala MQTT compartida extraída de Revienta Burbujas
   - Hecho cuando: Revienta Burbujas funciona online igual que antes usando el módulo
 - [ ] T012 — `?debug=1` y `?lag=&loss=` en `src/net/` (Q1, Q2)

@@ -80,7 +80,7 @@ const PCOL=[{body:'#2ec4b6',hat:'#e94f37',shot:'#ffcf3a'},{body:'#ff8fc7',hat:'#
 const G=900,$=id=>document.getElementById(id),PREFIX='revienta-burbujas-v1-';
 const keys=[{l:false,r:false,f:false},{l:false,r:false,f:false}];
 let st={state:'menu'},best=0,mode='menu',code='',guestIn={l:false,r:false,f:false},lastSent='';
-let hostState=null,sendAcc=0,gview=null,lastSnap=-1,hostTargetX=0,hostDir=0,guestX=null,echoT=0,echoAt=0,lat=0.15,localShotAt=0;
+let hostState=null,sendAcc=0,gview=null,lastSnap=-1,hostTargetX=0,hostDir=0,guestDir=0,guestLat=0.15,guestXAt=0,guestX=null,echoT=0,echoAt=0,lat=0.15,localShotAt=0;
 try{best=+localStorage.getItem('rb-best')||0}catch(e){}
 
 /* ---------- simulación ---------- */
@@ -106,7 +106,11 @@ function update(dt){
   if(st.state==='over'){st.t-=dt;if(st.t<=0&&st.ps.some((p,i)=>inputOf(i).f)){if(mode==='local')toMenu();else newGame(2)}return}
   st.ps.forEach((p,i)=>{
     const k=inputOf(i);
-    if(mode==='host'&&i===1&&guestX!==null)p.x=guestX;
+    if(mode==='host'&&i===1&&guestX!==null){
+      const since=Math.min(0.5,guestLat+(performance.now()-guestXAt)/1000);
+      const tx=Math.max(13,Math.min(W-13,guestX+guestDir*220*since));
+      p.x+=(tx-p.x)*Math.min(1,dt*20);
+    }
     else{if(k.l)p.x-=220*dt;if(k.r)p.x+=220*dt}
     p.x=Math.max(p.w/2,Math.min(W-p.w/2,p.x));
     if(k.f&&!p.shot)p.shot={x:p.x,top:FLOOR-p.h};
@@ -189,7 +193,7 @@ function publish(t,d){const m=JSON.stringify(d);for(const c of mq){try{if(c.conn
 function onMsg(tp,d){
   if(!d||typeof d!=='object')return;
   if(typeof d.n!=='number')return;
-  if(mode==='host'&&tp===topic('in')){if(d.n<=seqIn&&seqIn-d.n<1000)return;seqIn=d.n;heardAt=performance.now();guestIn={l:!!d.l,r:!!d.r,f:!!d.f};guestX=typeof d.x==='number'&&isFinite(d.x)?d.x:null;if(typeof d.t==='number'){echoT=d.t;echoAt=performance.now()}}
+  if(mode==='host'&&tp===topic('in')){if(d.n<=seqIn&&seqIn-d.n<1000)return;seqIn=d.n;heardAt=performance.now();guestIn={l:!!d.l,r:!!d.r,f:!!d.f};guestX=typeof d.x==='number'&&isFinite(d.x)?d.x:null;guestXAt=performance.now();guestDir=Math.max(-1,Math.min(1,d.d|0));if(typeof d.L==='number'&&d.L>=0&&d.L<3000)guestLat=d.L/1000;if(typeof d.t==='number'){echoT=d.t;echoAt=performance.now()}}
   if(mode==='guest'&&tp===topic('st')){if(d.n<=seqIn&&seqIn-d.n<1000)return;seqIn=d.n;heardAt=performance.now();hostState=d}
 }
 function host(msgEl){
@@ -203,7 +207,7 @@ function joinGame(c){
   pendingSub=topic('st');
   connect(()=>{enterOnline(false,c);joinStart=performance.now();lastSent=''},t=>{m.className='err';m.textContent=t});
 }
-function sendIn(){const k=keys[0];const m={n:++seqOut,l:k.l,r:k.r,f:k.f,t:Math.round(performance.now())};if(gview&&gview.ps&&gview.ps[1]&&gview.state==='play')m.x=Math.round(gview.ps[1].x);publish(topic('in'),m)}
+function sendIn(){const k=keys[0];const m={n:++seqOut,l:k.l,r:k.r,f:k.f,t:Math.round(performance.now())};if(gview&&gview.ps&&gview.ps[1]&&gview.state==='play'){m.x=Math.round(gview.ps[1].x);m.d=(k.r?1:0)-(k.l?1:0);m.L=Math.round(lat*1000)}publish(topic('in'),m)}
 function netTick(dt){
   const now=performance.now();
   if(mode==='host'){

@@ -12,9 +12,14 @@
 ## Fase 1 — Piezas compartidas
 - [x] T010 — `src/input/`: acciones abstractas (teclado, mando, táctil) como módulo
   - Hecho cuando: el menú principal lo usa en lugar de su código propio *(v0.3.0)*
-- [ ] T011 — `src/net/`: sala MQTT compartida extraída de Revienta Burbujas
+- [ ] T011 — `src/net/sala.js`: sala MQTT compartida extraída de Revienta Burbujas
   - Hecho cuando: Revienta Burbujas funciona online igual que antes usando el módulo
+  - Probar en el móvil: crear partida en un móvil, unirse desde otro y jugar un nivel
 - [ ] T012 — `?debug=1` y `?lag=&loss=` en `src/net/` (Q1, Q2)
+  - Hecho cuando: con `?debug=1` se ve el retardo de ida y vuelta (sirve de medida de MQTT antes de T014)
+- [ ] T014 — WebRTC directo con respaldo MQTT (plan §4, D-009)
+  - Hecho cuando: en la misma WiFi el HUD muestra `DIRECTA` y el retardo baja claramente respecto a MQTT; si se fuerza el fallo, sigue por MQTT
+  - Probar en el móvil: partida entre los dos móviles en casa con `?debug=1`, comparar el retardo con el de T012
 - [ ] T013 — Navegación con mando en el menú de Revienta Burbujas (C3)
 
 ## Fase 2 — Según respuestas de la spec

@@ -1,6 +1,6 @@
 # Plan técnico: Plataforma
 
-> **Spec:** `specs/000-plataforma/spec.md` · **Estado:** Aprobado · **Fecha:** 2026-10-20 · **Actualizado:** 2026-10-21
+> **Spec:** `specs/000-plataforma/spec.md` · **Estado:** Pendiente de aprobar §4 (WebRTC, D-009) · **Fecha:** 2026-10-20 · **Actualizado:** 2026-10-21
 
 ## 1. Cumplimiento de la constitución
 - [x] P1 Sin build: `index.html` + `css/lanzador.css` + módulos ES en `src/`
@@ -19,7 +19,8 @@
 | `juegos/registro.js` | datos de cada juego (`docs/arquitectura.md` §3) |
 | `src/version.js` | versión visible |
 | `src/input/entradas.js` | acciones abstractas compartidas (teclado, mando, táctil); API en `docs/arquitectura.md` §6 |
-| `src/net/` *(pendiente)* | sala MQTT compartida extraída de Revienta Burbujas |
+| `src/net/sala.js` *(pendiente)* | sala online compartida: código, señalización MQTT, WebRTC y respaldo |
+| `src/net/ice.js` *(pendiente)* | `servidoresIce()`: STUN públicos hoy; TURN del Worker en el futuro |
 
 ## 3. Menú principal
 - Estante horizontal con `scroll-snap`; el cartucho más cercano al centro es el seleccionado.
@@ -28,12 +29,18 @@
 - Al lanzar: clase `lanzando` (cartucho a la ranura + fundido) y navegación a los 480 ms; `pageshow` lo deshace al volver.
 
 ## 4. Módulo de red compartido (pendiente)
-Extraer de Revienta Burbujas: conexión a varios servidores, secuencias, medida de retardo y validación. API prevista:
+Extraer de Revienta Burbujas: conexión a varios servidores MQTT, código, secuencias, medida de retardo y validación. API (igual para cualquier transporte):
 ```js
 const sala = await crearSala({ juego: 'id', anfitrion: true });   // → sala.codigo
 sala.enviar('in' | 'st', datos);  sala.alRecibir((tema, datos) => {});  sala.cerrar();
+sala.via;      // 'directa' (WebRTC) | 'mqtt'
+sala.retardo;  // ida y vuelta medido, en ms
 ```
-Con `?lag=` y `?loss=` aplicados dentro de `enviar`.
+- **WebRTC (D-009):** al unirse, el invitado crea la conexión y un DataChannel `{ ordered: false, maxRetransmits: 0 }`; la oferta, la respuesta y los candidatos ICE viajan por MQTT en el tema `<juego>/v3/<codigo>/rtc`.
+- **Respaldo:** si el canal no abre en 5 s, o se cierra, todo sigue por MQTT sin cortar la partida. MQTT sigue conectado durante la partida para poder volver a él.
+- `servidoresIce()` devuelve `stun:stun.l.google.com:19302` y `stun:stun.cloudflare.com:3478`.
+- `?lag=` y `?loss=` se aplican dentro de `enviar`, para los dos transportes.
+- El HUD online muestra la vía (`DIRECTA` / `MQTT`) y el retardo.
 
 ## 5. Pruebas
 - Manual en móvil: deslizar, tocar, entrar, volver atrás, girar a horizontal.

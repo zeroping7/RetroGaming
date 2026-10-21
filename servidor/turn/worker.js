@@ -3,6 +3,7 @@
 // Variables del Worker (Settings → Variables and Secrets):
 //   TURN_KEY_ID        → texto: el "Turn Token ID" de la clave TURN
 //   TURN_KEY_API_TOKEN → secreto: el "API Token" de la clave TURN
+// Las credenciales caducan a las 3 h (ttl) para limitar el abuso si alguien las copia.
 // Respuesta: { iceServers: [...] }, lista para new RTCPeerConnection({ iceServers }).
 
 const ORIGENES = ['https://zeroping7.github.io'];
@@ -26,7 +27,7 @@ export default {
       {
         method: 'POST',
         headers: { Authorization: `Bearer ${env.TURN_KEY_API_TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ttl: 86400 }),
+        body: JSON.stringify({ ttl: 10800 }),
       },
     );
     if (!r.ok) return new Response('Error de Cloudflare: ' + r.status, { status: 502, headers: cors });

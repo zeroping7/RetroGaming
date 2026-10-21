@@ -40,6 +40,7 @@ canvas{display:block;max-width:100%;max-height:100%;aspect-ratio:400/560;border-
 .pad button.on{filter:brightness(1.4)}
 button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .hint{font-size:8px;color:var(--muted);margin:0;text-align:center;line-height:1.7}
+#share{position:absolute;bottom:24%;left:50%;transform:translateX(-50%);font:inherit;font-size:10px;padding:14px 18px;border:0;border-radius:10px;background:var(--accent);color:#2a1b00;cursor:pointer;white-space:nowrap}
 #quit{position:absolute;top:8px;right:8px;font:inherit;font-size:8px;padding:8px;border:0;border-radius:6px;background:rgba(0,0,0,.4);color:var(--fg);cursor:pointer}
 @media (hover:hover) and (pointer:fine){#pads{display:none}}
 </style>
@@ -48,6 +49,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 <div id="wrap">
   <canvas id="c" width="400" height="560"></canvas>
   <button id="quit" hidden>SALIR</button>
+  <button id="share" hidden>COMPARTIR ENLACE</button>
   <div class="menu" id="menu">
     <h1>REVIENTA<br>BURBUJAS</h1>
     <h2>MISMO DISPOSITIVO</h2>
@@ -259,6 +261,7 @@ function bg(){
 }
 function draw(){
   bg();
+  const sh=$('share'),ver=mode==='host'&&st.state==='wait';if(sh.hidden===ver)sh.hidden=!ver;
   if(st.state==='menu'){
     const t=performance.now()/1000;x.globalAlpha=.3;
     for(let i=0;i<4;i++){const s=4-i;x.fillStyle=COL[s];x.beginPath();x.arc(60+i*95,470-Math.abs(Math.sin(t*1.5+i))*120,R[s],0,7);x.fill()}
@@ -316,6 +319,16 @@ function doJoin(){const c=$('code').value.trim().toUpperCase();
   if(!/^[A-Z0-9]{4}$/.test(c)){$('jmsg').className='err';$('jmsg').textContent='El código tiene 4 letras o números.';return}
   closeNet();joinGame(c)}
 $('jgo').onclick=doJoin;
+// Compartir la partida (HU-9): abre las apps del móvil o, si no se puede, copia el enlace
+$('share').onclick=async()=>{
+  const b=$('share'),net=await import('../../src/net/sala.js'),url=net.enlaceDePartida('revienta-burbujas',code);
+  if(navigator.share){try{await navigator.share({title:'Revienta Burbujas',text:'¡Juega conmigo a Revienta Burbujas! Código '+code,url});return}catch(e){if(e&&e.name==='AbortError')return}}
+  try{await navigator.clipboard.writeText(url);b.textContent='ENLACE COPIADO'}catch(e){b.textContent='CÓDIGO '+code}
+  setTimeout(()=>{b.textContent='COMPARTIR ENLACE'},2000);
+};
+// Entrar con un enlace ?sala=CODIGO: directo a unirse, sin escribirlo
+import('../../src/net/sala.js').then(net=>{const c=net.codigoDeUrl();if(!c)return;
+  $('menu').hidden=true;$('join').hidden=false;$('code').value=c;closeNet();joinGame(c)}).catch(()=>{});
 $('code').addEventListener('keydown',e=>{if(e.key==='Enter')doJoin();e.stopPropagation()});
 $('quit').onclick=toMenu;
 const toLauncher=()=>{closeNet();location.href='../../'};

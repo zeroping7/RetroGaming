@@ -46,9 +46,9 @@ Abrir la web desde cualquier dispositivo, elegir un juego como en una consola re
 - [x] Si se deja de recibir 4 s, ambos ven "Esperando…" hasta que vuelve.
 
 **HU-9 — Compartir la partida con un enlace.** Como anfitrión, quiero mandar un enlace (p. ej. por WhatsApp) para que mi compañero entre sin escribir el código.
-- [ ] Al crear partida, junto al código veo "Compartir", que abre las apps del móvil; si el dispositivo no lo permite, copia el enlace y avisa.
-- [ ] Al abrir el enlace, el invitado entra en ese juego y se une directamente a la partida.
-- [ ] Si la partida ya no existe, ve el mismo aviso que con un código incorrecto.
+- [x] Al crear partida, junto al código veo "Compartir", que abre las apps del móvil; si el dispositivo no lo permite, copia el enlace y avisa.
+- [x] Al abrir el enlace, el invitado entra en ese juego y se une directamente a la partida.
+- [x] Si la partida ya no existe, ve el mismo aviso que con un código incorrecto.
 
 **HU-10 — Orientación.** Como jugador, quiero que cada juego use la orientación que mejor le va.
 - [ ] La app instalada no fija la orientación: el menú funciona en vertical y en horizontal.

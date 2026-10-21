@@ -37,6 +37,23 @@ export function codigoValido(c) {
   return typeof c === 'string' && c.length === 4 && [...c].every((ch) => ALFABETO.includes(ch));
 }
 
+// Enlace para unirse a una partida (plan de 000 §6, D-008): <sitio>/juegos/<id>/?sala=CODIGO
+const RAIZ = new URL('../../', import.meta.url);
+export function enlaceDePartida(idJuego, codigo) {
+  return new URL(`juegos/${idJuego}/?sala=${codigo}`, RAIZ).href;
+}
+
+/** Código de `?sala=` en la URL actual, o null si no hay o no es válido. Lo quita de la URL. */
+export function codigoDeUrl() {
+  const u = new URL(location.href);
+  const c = (u.searchParams.get('sala') || '').trim().toUpperCase();
+  if (u.searchParams.has('sala')) {
+    u.searchParams.delete('sala');
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash); // recargar no vuelve a unirse
+  }
+  return codigoValido(c) ? c : null;
+}
+
 let cargaMqtt = null;
 function cargarMqtt() {
   if (globalThis.mqtt) return Promise.resolve(globalThis.mqtt);

@@ -1,7 +1,7 @@
 # Spec de funcionalidad: <Nombre>
 
 > **ID:** NNN-<id> · **Estado:** Borrador | En revisión | Aprobada | Implementada · **Fecha:**
-> Para piezas de plataforma (menú, entradas, red, guardado...), no para juegos.
+> Para piezas de plataforma (menú, entradas, red, guardado...) o para ampliar un juego que ya existe.
 
 ## 1. Problema
 <!-- Qué falta o qué molesta hoy. -->

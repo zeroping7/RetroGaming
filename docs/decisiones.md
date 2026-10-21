@@ -53,7 +53,7 @@ Una entrada por decisión. Nunca se borran; si cambian, se añade una nueva que 
 - Estado: Aceptada
 - Contexto: el juego es anterior a la constitución y funciona.
 - Decisión: se mantiene en un solo `index.html` con canvas 2D (sin Phaser), lógica y dibujo juntos (incumple A1, A2 y Q3) y menú sin navegación por mando (incumple C3).
-- Consecuencias: cuando haya que cambiarlo a fondo, se extraen sus entradas y su red a `src/input/` y `src/net/` (tareas en `specs/000-plataforma/tareas.md`).
+- Consecuencias: cuando haya que cambiarlo a fondo, se extraen sus entradas y su red a `src/input/` y `src/net/` (tareas en `specs/plataforma/000-plataforma/tareas.md`).
 
 ## D-007 — Cada juego elige su orientación
 - Fecha: 2026-10-21
@@ -78,3 +78,11 @@ Una entrada por decisión. Nunca se borran; si cambian, se añade una nueva que 
 - Decisión: datos de juego por WebRTC DataChannel no fiable y sin orden (como UDP), con STUN público y gratuito (Google y Cloudflare), sin cuenta ni servidor. MQTT queda para encontrarse con el código (señalización) y como respaldo si WebRTC no conecta. Prioridad: que vaya perfecto en la misma WiFi.
 - Alternativas descartadas por ahora: TURN de Cloudflare (1000 GB gratis al mes, pero pide tarjeta; el Worker ya está preparado en `servidor/turn/worker.js` para cuando haya muchos jugadores); Metered (plan gratis de 500 MB al mes); ExpressTURN (credenciales fijas visibles en el repo).
 - Consecuencias: con datos móviles a veces no habrá conexión directa y se jugará por MQTT como ahora. Los servidores ICE salen de una única función en `src/net/`, así que añadir TURN más adelante no toca los juegos. No incumple P2 mientras no se use el Worker.
+
+## D-010 — Specs agrupadas por juego
+- Fecha: 2026-10-21
+- Estado: Aceptada
+- Contexto: con varios juegos y ampliaciones, una lista plana de `specs/NNN-*` mezclaría las de unos y otros.
+- Decisión: `specs/<id-juego>/NNN-nombre/` (y `specs/plataforma/` para lo común). Cada ampliación de un juego es una spec nueva dentro de su carpeta; la spec original describe el juego tal como se hizo. La numeración NNN sigue siendo global.
+- Alternativas descartadas: ampliar la spec original (mezcla lo hecho con lo pendiente en una sola carpeta de tareas); numeración por juego (dos "T011 de 001" posibles).
+- Consecuencias: el código ya estaba en `juegos/<id>/`; ahora las specs siguen el mismo orden.

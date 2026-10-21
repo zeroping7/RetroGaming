@@ -1,6 +1,6 @@
 # Tareas: <Nombre>
 
-> **Plan:** `specs/NNN-<id>/plan.md`
+> **Plan:** `specs/<juego>/NNN-<id>/plan.md`
 > Reglas: cada tarea cabe en una sesión con Claude, deja todo funcionando y se prueba desde el móvil.
 > Orden fijo: primero 1 jugador jugable en greybox, después 2 jugadores y online, al final pulido.
 

@@ -1,6 +1,6 @@
 # Plan técnico: <Nombre>
 
-> **Spec:** `specs/NNN-<id>/spec.md` · **Estado:** Borrador | Aprobado · **Fecha:**
+> **Spec:** `specs/<juego>/NNN-<id>/spec.md` · **Estado:** Borrador | Aprobado · **Fecha:**
 > Describe CÓMO. Cada decisión debe poder trazarse a una parte de la spec.
 
 ## 1. Cumplimiento de la constitución

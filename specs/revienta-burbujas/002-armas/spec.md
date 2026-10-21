@@ -1,7 +1,7 @@
 # Spec de funcionalidad: Armas y objetos de Revienta Burbujas
 
-> **ID:** 002-rb-armas · **Estado:** En revisión · **Fecha:** 2026-10-21
-> Amplía el juego `specs/001-revienta-burbujas/`. Inspirado en los arcades de burbujas de los 90 (mecánicas, no sus gráficos ni nombres: constitución AR2).
+> **ID:** 002-armas · **Estado:** En revisión · **Fecha:** 2026-10-21
+> Amplía el juego `specs/revienta-burbujas/001-revienta-burbujas/`. Inspirado en los arcades de burbujas de los 90 (mecánicas, no sus gráficos ni nombres: constitución AR2).
 > El juego de puzzle/tablero previsto como siguiente pasa a ser la spec 003.
 
 ## 1. Problema

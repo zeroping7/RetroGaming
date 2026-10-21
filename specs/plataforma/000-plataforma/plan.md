@@ -1,6 +1,6 @@
 # Plan técnico: Plataforma
 
-> **Spec:** `specs/000-plataforma/spec.md` · **Estado:** Aprobado · **Fecha:** 2026-10-20 · **Actualizado:** 2026-10-21
+> **Spec:** `specs/plataforma/000-plataforma/spec.md` · **Estado:** Aprobado · **Fecha:** 2026-10-20 · **Actualizado:** 2026-10-21
 
 ## 1. Cumplimiento de la constitución
 - [x] P1 Sin build: `index.html` + `css/lanzador.css` + módulos ES en `src/`

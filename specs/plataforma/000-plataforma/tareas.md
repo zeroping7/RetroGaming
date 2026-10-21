@@ -1,6 +1,6 @@
 # Tareas: Plataforma
 
-> **Plan:** `specs/000-plataforma/plan.md`
+> **Plan:** `specs/plataforma/000-plataforma/plan.md`
 
 ## Fase 0 — Menú (hecho en v0.2.0)
 - [x] T001 — Mover Revienta Burbujas a `juegos/revienta-burbujas/` con botón de volver

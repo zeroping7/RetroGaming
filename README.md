@@ -11,7 +11,7 @@ Consola de juegos retro en el navegador. Elige un cartucho y juega solo, con alg
 
 ## Cómo se desarrolla
 Con Spec Driven Development y Claude, todo desde el móvil:
-1. **"spec de <juego>"** → `specs/NNN-<id>/spec.md` (qué y por qué)
+1. **"spec de <juego>"** → `specs/<juego>/NNN-<id>/spec.md` (qué y por qué)
 2. **"plan de NNN"** → `plan.md` (cómo)
 3. **"tareas de NNN"** → `tareas.md` (pasos pequeños)
 4. **"implementa TNNN"** → código, una tarea cada vez

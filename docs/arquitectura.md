@@ -19,7 +19,11 @@ juegos/
     icono.png            # favicon del juego (opcional)
     sim.js render.js tests.html   # estructura para juegos nuevos (constitución A1, Q3)
 sw.js  manifest.webmanifest  icon-192.png  icon-512.png   # app instalable de todo el sitio
-docs/  specs/  CLAUDE.md
+docs/  CLAUDE.md
+specs/
+  _plantillas/
+  plataforma/NNN-*/        # lo común: menú, entradas, red
+  <id-juego>/NNN-*/        # specs de cada juego, en la carpeta con su mismo id
 ```
 
 ## 2. Navegación

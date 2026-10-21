@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pruebas · Revienta Burbujas</title>
+<style>
+  body{background:#0d0b1f;color:#f4f1ff;font:14px/1.5 ui-monospace,monospace;margin:0;padding:16px}
+  h1{font-size:16px;margin:0 0 12px}
+  #resumen{font-weight:bold;margin:0 0 12px;padding:10px;border-radius:8px}
+  .ok{color:#5ee6c2}.mal{color:#ff6fae}
+  #resumen.ok{background:#0f2e2a}#resumen.mal{background:#3a1026}
+  li{margin:4px 0}
+  a{color:#ffcf3a}
+</style>
+</head>
+<body>
+<h1>Pruebas de sim.js</h1>
+<p id="resumen">Ejecutando…</p>
+<ul id="lista"></ul>
+<p><a href="./">◀ Volver al juego</a></p>
+<script type="module">
+// Pruebas sin frameworks (constitución Q3): cada una monta un estado, avanza y comprueba.
+import { W, FLOOR, R, crear, paso, codificar, decodificar } from './sim.js';
+
+const pruebas = [];
+const prueba = (nombre, fn) => pruebas.push({ nombre, fn });
+function igual(a, b, que) { if (a !== b) throw new Error(`${que}: esperaba ${b} y salió ${a}`); }
+function cierto(v, que) { if (!v) throw new Error(que); }
+
+const nada = () => ({ left: false, right: false, a: false });
+const quietos = (st) => st.ps.map(nada);
+const DT = 1 / 60;
+function avanzar(st, seg, entradas = quietos(st)) { for (let t = 0; t < seg; t += DT) paso(st, entradas, DT); }
+function jugando(n) { const st = crear(n); avanzar(st, 1.5); igual(st.state, 'play', 'tras la cuenta inicial'); return st; }
+
+prueba('1 jugador empieza con 3 vidas, nivel 1 y una burbuja de tamaño 3', () => {
+  const st = crear(1);
+  igual(st.lives, 3, 'vidas'); igual(st.lvl, 1, 'nivel'); igual(st.balls.length, 1, 'burbujas'); igual(st.balls[0].s, 3, 'tamaño');
+  igual(st.state, 'ready', 'fase');
+});
+
+prueba('2 jugadores comparten 5 vidas y tienen una burbuja más', () => {
+  const st = crear(2);
+  igual(st.lives, 5, 'vidas'); igual(st.ps.length, 2, 'jugadores'); igual(st.balls.length, 2, 'burbujas');
+});
+
+prueba('El jugador se mueve y no sale de la pantalla', () => {
+  const st = jugando(1);
+  st.balls = [];
+  st.balls.push({ s: 1, x: 20, y: 30, vx: 0, vy: 0 }); // lejos, para que no acabe el nivel
+  avanzar(st, 5, [{ left: false, right: true, a: false }]);
+  igual(st.ps[0].x, W - st.ps[0].w / 2, 'pegado al borde derecho');
+});
+
+prueba('Un arpón parte una burbuja grande en dos del tamaño inferior y suma puntos', () => {
+  const st = jugando(1);
+  const p = st.ps[0];
+  st.balls = [{ s: 3, x: p.x, y: 200, vx: 0, vy: 0 }];
+  paso(st, [{ left: false, right: false, a: true }], DT);
+  avanzar(st, 0.6);
+  igual(st.balls.length, 2, 'burbujas');
+  cierto(st.balls.every((b) => b.s === 2), 'las dos de tamaño 2');
+  igual(st.score, 40, 'puntos por una de tamaño 3');
+  igual(p.shot, null, 'el arpón desaparece al tocar');
+});
+
+prueba('La burbuja más pequeña desaparece y, sin burbujas, el nivel se limpia (+500)', () => {
+  const st = jugando(1);
+  const p = st.ps[0];
+  st.balls = [{ s: 1, x: p.x, y: 300, vx: 0, vy: 0 }];
+  paso(st, [{ left: false, right: false, a: true }], DT);
+  avanzar(st, 0.5);
+  igual(st.state, 'clear', 'fase'); igual(st.score, 600, 'puntos (100 + 500)');
+  avanzar(st, 1.7);
+  igual(st.lvl, 2, 'pasa al nivel 2');
+});
+
+prueba('Si una burbuja toca al jugador, pierde una vida y se reinicia el nivel', () => {
+  const st = jugando(1);
+  const p = st.ps[0];
+  st.balls = [{ s: 2, x: p.x, y: FLOOR - 20, vx: 0, vy: 0 }];
+  paso(st, quietos(st), DT);
+  igual(st.state, 'dead', 'fase'); igual(st.lives, 2, 'vidas');
+  const ronda = st.ronda;
+  avanzar(st, 1.4);
+  igual(st.state, 'ready', 'vuelve a empezar'); cierto(st.ronda > ronda, 'cuenta como ronda nueva');
+});
+
+prueba('Sin vidas: fin de partida y, al pulsar disparo, pide otra', () => {
+  const st = jugando(1);
+  st.lives = 1;
+  st.balls = [{ s: 2, x: st.ps[0].x, y: FLOOR - 20, vx: 0, vy: 0 }];
+  avanzar(st, 1.4);
+  igual(st.state, 'over', 'fase');
+  avanzar(st, 1.1);
+  paso(st, [{ left: false, right: false, a: true }], DT);
+  igual(st.state, 'again', 'pide partida nueva');
+});
+
+prueba('La entrada x acerca al jugador a esa posición (invitado online)', () => {
+  const st = jugando(2);
+  st.balls = [{ s: 1, x: 20, y: 30, vx: 0, vy: 0 }];
+  avanzar(st, 1, [nada(), { left: false, right: false, a: false, x: 100 }]);
+  cierto(Math.abs(st.ps[1].x - 100) < 1, 'llega a x = 100');
+});
+
+prueba('Las burbujas rebotan y no salen de la pantalla', () => {
+  const st = jugando(1);
+  st.balls = [{ s: 4, x: 50, y: 100, vx: -300, vy: 0 }];
+  for (let t = 0; t < 5; t += DT) {
+    paso(st, [{ left: false, right: false, a: false, x: W - 13 }], DT);
+    const b = st.balls[0];
+    cierto(b.x - R[4] >= -0.01 && b.x + R[4] <= W + 0.01 && b.y + R[4] <= FLOOR + 0.01, 'dentro de la pantalla');
+    if (st.state !== 'play') break;
+  }
+});
+
+prueba('codificar y decodificar dan el mismo estado (redondeado)', () => {
+  const st = jugando(2);
+  st.ps[0].shot = { x: 120.4, top: 300.6 };
+  avanzar(st, 0.2);
+  const d = decodificar(JSON.parse(JSON.stringify(codificar(st))));
+  igual(d.state, st.state, 'fase'); igual(d.lvl, st.lvl, 'nivel'); igual(d.lives, st.lives, 'vidas'); igual(d.score, st.score, 'puntos');
+  igual(d.balls.length, st.balls.length, 'burbujas');
+  st.balls.forEach((b, i) => { igual(d.balls[i].s, b.s, 'tamaño'); igual(d.balls[i].x, Math.round(b.x), 'x'); });
+  igual(d.ps[0].shot.x, Math.round(st.ps[0].shot.x), 'arpón');
+  igual(d.ps[1].shot, null, 'sin arpón el J2');
+});
+
+prueba('decodificar rechaza mensajes rotos y limita lo que acepta', () => {
+  igual(decodificar(null), null, 'nulo'); igual(decodificar({ b: 'x', p: [] }), null, 'tipos');
+  const d = decodificar({ m: 1, b: new Array(500).fill(2), p: [1, -1, -1, 0, 2, -1, -1, 9, 3, 3, 3, 3] });
+  igual(d.balls.length, 80, 'máximo 80 burbujas'); igual(d.ps.length, 2, 'máximo 2 jugadores'); igual(d.ps[1].dir, 1, 'dirección limitada');
+});
+
+const lista = document.getElementById('lista');
+let fallos = 0;
+for (const { nombre, fn } of pruebas) {
+  const li = document.createElement('li');
+  try { fn(); li.className = 'ok'; li.textContent = '✓ ' + nombre; }
+  catch (e) { fallos++; li.className = 'mal'; li.textContent = '✗ ' + nombre + ' — ' + e.message; }
+  lista.appendChild(li);
+}
+const r = document.getElementById('resumen');
+r.className = fallos ? 'mal' : 'ok';
+r.textContent = fallos ? `${fallos} de ${pruebas.length} fallan` : `Las ${pruebas.length} pruebas pasan`;
+</script>
+</body>
+</html>

@@ -71,5 +71,5 @@ Cada dos niveles hay una burbuja más (hasta 4, +1 con dos jugadores) y desde el
 - Sonido, objetos especiales, tipos de arma.
 
 ## 13. Preguntas abiertas
-- [ ] ¿Añadir sonido y objetos (arpón doble, escudo)?
-- [ ] ¿Migrarlo a la estructura `sim.js` + Phaser cuando toque cambiarlo a fondo? (D-006)
+- [x] ¿Añadir sonido y objetos (arpón doble, escudo)? → Objetos y armas: **sí**, en la spec 002. Sonido: pendiente.
+- [x] ¿Migrarlo a la estructura `sim.js` + Phaser cuando toque cambiarlo a fondo? (D-006) → `sim.js`, `render.js` y `tests.html` **sí** (T001 de 002); Phaser **no**.

@@ -8,7 +8,7 @@ src/
   lanzador.js            # lógica del menú: selección, táctil, teclado, mando
   version.js             # export const VERSION = 'x.y.z'
   input/entradas.js      # controles compartidos: teclado, mando y táctil → acciones (§6)
-  net/                   # (pendiente) sala online compartida — ver specs/000-plataforma/tareas.md
+  net/sala.js            # sala online compartida: código, servidores, secuencias y retardo (§5)
 juegos/
   registro.js            # lista de juegos del menú (§3)
   <id>/
@@ -56,12 +56,15 @@ Opciones según el registro: **1 jugador**, **2 jugadores** (mismo dispositivo),
 ## 5. Online en tiempo real
 **Transporte (D-004):** MQTT sobre WebSocket seguro contra **varios servidores públicos a la vez** (shiftr.io, HiveMQ y EMQX). Todo se envía por todos; se acepta lo que llegue primero por cualquiera y se descartan duplicados por número de secuencia.
 
-**Temas MQTT:** `<id-juego>/v<versión-protocolo>/<CÓDIGO>/in` (invitado → anfitrión) y `/st` (anfitrión → invitado).
+**Módulo:** todo lo genérico vive en `src/net/sala.js` (API en el plan de 000, §4). Los juegos lo cargan con `import('../../src/net/sala.js')`; la sala carga MQTT.js sola.
+
+**Temas MQTT:** `<id-juego>/v<versión-protocolo>/<CÓDIGO>/in` (invitado → anfitrión) y `/st` (anfitrión → invitado). Revienta Burbujas usa la versión 3.
 
 **Mensajes**
 - Invitado → anfitrión: `{n, l, r, f, ...}` — secuencia + estado de los botones. Se envía al cambiar algo y, además, cada 50 ms si se mueve o cada 500 ms si está quieto.
 - Anfitrión → invitado: instantánea del estado 25 veces/s con números redondeados y arrays planos.
-- Retardo: el invitado manda su hora (`t`), el anfitrión la devuelve (`e`) junto con cuánto tardó en contestar (`a`); de ahí sale la ida y vuelta.
+- La sala añade a cada mensaje `n` (secuencia) y `_t`, `_e`, `_a` (retardo); los juegos no usan esos nombres.
+- Retardo: cada lado manda su hora (`_t`) y el otro la devuelve (`_e`) junto con cuánto tardó en contestar (`_a`). Así **los dos** miden la ida y vuelta (`sala.retardo`, en ms) y la ven en el HUD.
 - Todo lo recibido se valida (tipos, rangos, longitud) antes de usarse: los temas son públicos.
 
 **Niveles de red** (cada juego elige uno en su spec):

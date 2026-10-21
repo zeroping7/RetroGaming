@@ -10,7 +10,6 @@
 <link rel="apple-touch-icon" href="../../icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
-<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <style>
 :root{--bg:#0d0b1f;--panel:#1a1640;--fg:#f4f1ff;--muted:#a59fd6;--p1:#2ec4b6;--p2:#ff8fc7;--accent:#ffcf3a;--px:"Press Start 2P",ui-monospace,monospace;color-scheme:dark;
   padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -82,7 +81,7 @@ const PCOL=[{body:'#2ec4b6',hat:'#e94f37',shot:'#ffcf3a'},{body:'#ff8fc7',hat:'#
 const G=900,$=id=>document.getElementById(id),PREFIX='revienta-burbujas-v1-';
 const keys=[{l:false,r:false,f:false},{l:false,r:false,f:false}];
 let st={state:'menu'},best=0,mode='menu',code='',guestIn={l:false,r:false,f:false},lastSent='';
-let hostState=null,sendAcc=0,gview=null,lastSnap=-1,hostTargetX=0,hostDir=0,guestDir=0,guestLat=0.15,guestXAt=0,guestX=null,echoT=0,echoAt=0,lat=0.15,localShotAt=0;
+let hostState=null,sendAcc=0,gview=null,lastSnap=-1,hostTargetX=0,hostDir=0,guestDir=0,guestLat=0.15,guestXAt=0,guestX=null,lat=0.15,localShotAt=0;
 try{best=+localStorage.getItem('rb-best')||0}catch(e){}
 
 /* ---------- simulación ---------- */
@@ -145,7 +144,7 @@ function update(dt){
   if(st.score>best){best=st.score;try{localStorage.setItem('rb-best',best)}catch(e){}}
 }
 
-/* ---------- red (servidor MQTT público): el anfitrión simula, el invitado envía mandos y dibuja ---------- */
+/* ---------- red (src/net/sala.js): el anfitrión simula, el invitado envía mandos y dibuja ---------- */
 const SN=['ready','play','dead','clear','over'];
 function encode(){
   const b=[];for(const o of st.balls)b.push(o.s,Math.round(o.x),Math.round(o.y),Math.round(o.vx),Math.round(o.vy));
@@ -161,55 +160,33 @@ function decode(d){
   if(Array.isArray(d.q))for(let i=0;i+3<d.q.length&&s.pop.length<40;i+=4){const sz=d.q[i+2]|0;if(sz>=1&&sz<=4)s.pop.push({x:+d.q[i],y:+d.q[i+1],s:sz,t:d.q[i+3]/100})}
   return s;
 }
-function randCode(){const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<4;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
-const BROKERS=[
-  {url:'wss://public.cloud.shiftr.io:443',user:'public',pass:'public'},
-  {url:'wss://broker.hivemq.com:8884/mqtt'},
-  {url:'wss://broker.emqx.io:8084/mqtt'}
-];
-let mq=[],heardAt=0,helloAt=0,joinStart=0,seqOut=0,seqIn=-1,netGen=0;
-function closeNet(){netGen++;for(const c of mq){try{c.end(true)}catch(e){}}mq=[];hostState=null;heardAt=0;seqIn=-1;gview=null;lastSnap=-1;guestX=null;echoAt=0;lat=0.15}
+let sala=null,heardAt=0,helloAt=0,joinStart=0,netGen=0;
+function closeNet(){netGen++;if(sala){sala.cerrar();sala=null}hostState=null;heardAt=0;gview=null;lastSnap=-1;guestX=null;lat=0.15}
 function enterOnline(asHost,c){code=c;mode=asHost?'host':'guest';st={state:'wait'};hideMenus();$('pad2').hidden=true;$('quit').hidden=false}
-function topic(t){return 'revienta-burbujas/v2/'+code+'/'+t}
-// Se conecta a todos los servidores a la vez: lo que se envía va por todos y lo recibido se acepta de cualquiera
-function connect(onReady,onFail){
-  if(typeof mqtt==='undefined'){onFail('Sin conexión: el modo online necesita internet.');return}
-  const gen=++netGen;let ready=false,failed=0;seqOut=Math.max(seqOut,Date.now());
-  BROKERS.forEach((b,i)=>{
-    let cl;
-    try{cl=mqtt.connect(b.url,{clientId:'rb_'+Math.random().toString(36).slice(2,12),clean:true,connectTimeout:8000,reconnectPeriod:3000,keepalive:20,username:b.user,password:b.pass})}catch(e){failed++;return}
-    cl.__i=i;
-    cl.on('connect',()=>{
-      if(gen!==netGen){try{cl.end(true)}catch(e){}return}
-      if(!mq.includes(cl))mq.push(cl);
-      if(pendingSub)cl.subscribe(pendingSub,{qos:0});
-      if(!ready){ready=true;onReady()}
-    });
-    cl.on('message',(tp,buf)=>{let d;try{d=JSON.parse(buf.toString())}catch(e){return}onMsg(tp,d)});
-  });
-  setTimeout(()=>{if(gen===netGen&&!ready){closeNet();onFail('No se pudo conectar al servidor. Revisa la conexión.')}},10000);
-}
-let pendingSub=null;
-function netInfo(){return BROKERS.map((b,i)=>(mq.some(c=>c.connected&&c.options&&c.__i===i)?'✓':'✗')+(i+1)).join(' ')}
-function publish(t,d){const m=JSON.stringify(d);for(const c of mq){try{if(c.connected)c.publish(t,m,{qos:0})}catch(e){}}}
+function netInfo(){return sala?sala.servidores():''}
 function onMsg(tp,d){
-  if(!d||typeof d!=='object')return;
-  if(typeof d.n!=='number')return;
-  if(mode==='host'&&tp===topic('in')){if(d.n<=seqIn&&seqIn-d.n<1000)return;seqIn=d.n;heardAt=performance.now();guestIn={l:!!d.l,r:!!d.r,f:!!d.f};guestX=typeof d.x==='number'&&isFinite(d.x)?d.x:null;guestXAt=performance.now();guestDir=Math.max(-1,Math.min(1,d.d|0));if(typeof d.L==='number'&&d.L>=0&&d.L<3000)guestLat=d.L/1000;if(typeof d.t==='number'){echoT=d.t;echoAt=performance.now()}}
-  if(mode==='guest'&&tp===topic('st')){if(d.n<=seqIn&&seqIn-d.n<1000)return;seqIn=d.n;heardAt=performance.now();hostState=d}
+  if(mode==='host'&&tp==='in'){heardAt=performance.now();guestIn={l:!!d.l,r:!!d.r,f:!!d.f};guestX=typeof d.x==='number'&&isFinite(d.x)?d.x:null;guestXAt=performance.now();guestDir=Math.max(-1,Math.min(1,d.d|0));guestLat=sala.retardo/2000}
+  if(mode==='guest'&&tp==='st'){heardAt=performance.now();hostState=d}
+}
+// Abre la sala (sin código = crear partida nueva). Si mientras tanto se vuelve al menú, se cierra.
+async function openSala(c,asHost,onFail){
+  const gen=++netGen;
+  try{
+    const net=await import('../../src/net/sala.js');
+    const s=await net.crearSala({juego:'revienta-burbujas',version:3,codigo:c||net.codigoAleatorio(),escuchar:[asHost?'in':'st']});
+    if(gen!==netGen){s.cerrar();return null}
+    sala=s;s.alRecibir(onMsg);return s;
+  }catch(e){if(gen===netGen)onFail(e.message&&e.message.startsWith('No se pudo')?e.message:'Sin conexión: el modo online necesita internet.');return null}
 }
 function host(msgEl){
   msgEl.className='';msgEl.textContent='Creando…';
-  code=randCode();
-  pendingSub=topic('in');
-  connect(()=>{enterOnline(true,code)},t=>{msgEl.className='err';msgEl.textContent=t});
+  openSala(null,true,t=>{msgEl.className='err';msgEl.textContent=t}).then(s=>{if(s)enterOnline(true,s.codigo)});
 }
 function joinGame(c){
   const m=$('jmsg');m.className='';m.textContent='Entrando…';code=c;
-  pendingSub=topic('st');
-  connect(()=>{enterOnline(false,c);joinStart=performance.now();lastSent=''},t=>{m.className='err';m.textContent=t});
+  openSala(c,false,t=>{m.className='err';m.textContent=t}).then(s=>{if(s){enterOnline(false,c);joinStart=performance.now();lastSent=''}});
 }
-function sendIn(){const k=keys[0];const m={n:++seqOut,l:k.l,r:k.r,f:k.f,t:Math.round(performance.now())};if(gview&&gview.ps&&gview.ps[1]&&gview.state==='play'){m.x=Math.round(gview.ps[1].x);m.d=(k.r?1:0)-(k.l?1:0);m.L=Math.round(lat*1000)}publish(topic('in'),m)}
+function sendIn(){const k=keys[0];const m={l:k.l,r:k.r,f:k.f};if(gview&&gview.ps&&gview.ps[1]&&gview.state==='play'){m.x=Math.round(gview.ps[1].x);m.d=(k.r?1:0)-(k.l?1:0)}sala.enviar('in',m)}
 function netTick(dt){
   const now=performance.now();
   if(mode==='host'){
@@ -217,7 +194,7 @@ function netTick(dt){
     if(st.state==='wait')newGame(2);
     return true;
   }
-  if(!mq.length)return false;
+  if(!sala)return false;
   const k=keys[0],s=(k.l?1:0)+(k.r?2:0)+(k.f?4:0)+'';
   const moving=k.l||k.r;
   if(s!==lastSent||now-helloAt>(moving?50:500)){lastSent=s;helloAt=now;sendIn()}
@@ -238,11 +215,8 @@ function guestStep(dt){
   const now=performance.now();
   if(hostState&&hostState.n!==lastSnap){
     lastSnap=hostState.n;const s=decode(hostState);
-    // retraso medido: ida y vuelta menos lo que el anfitrión tardó en contestar, la mitad es la ida
-    if(typeof hostState.e==='number'&&typeof hostState.a==='number'){
-      const rtt=(now-hostState.e-hostState.a)/1000;
-      if(rtt>0&&rtt<3)lat+=(rtt/2-lat)*0.2;
-    }
+    // retardo de ida (la mitad de la ida y vuelta que mide la sala)
+    if(sala)lat=sala.retardo/2000;
     if(s&&s.ps.length===2){
       const ahead=Math.min(lat,0.6);
       if(s.state==='play'){for(let t=ahead;t>0;t-=1/60)stepBalls(s.balls,Math.min(1/60,t));
@@ -273,7 +247,7 @@ function guestStep(dt){
   stepBalls(v.balls,dt);
   v.pop=v.pop.filter(q=>(q.t-=dt)>0);
 }
-function sendState(dt){sendAcc+=dt;if(sendAcc<1/25)return;sendAcc=0;const e=encode();e.n=++seqOut;if(echoAt){e.e=echoT;e.a=Math.round(performance.now()-echoAt)}publish(topic('st'),e)}
+function sendState(dt){sendAcc+=dt;if(sendAcc<1/25||!sala)return;sendAcc=0;sala.enviar('st',encode())}
 
 /* ---------- dibujo ---------- */
 function txt(s,y,size,col){x.fillStyle=col||'#f4f1ff';x.font=`${size}px "Press Start 2P", monospace`;x.textAlign='center';x.fillText(s,W/2,y)}
@@ -320,7 +294,7 @@ function draw(){
   x.textAlign='right';x.fillText('NIVEL '+st.lvl,W-10,FLOOR+20);
   x.textAlign='left';x.fillStyle='#ff6fae';x.fillText('♥'.repeat(Math.max(0,Math.min(9,st.lives))),10,FLOOR+36);
   x.textAlign='right';x.fillStyle='#a59fd6';x.fillText(mode==='local'?'RÉCORD '+best:'ONLINE '+code,W-10,FLOOR+36);
-  if(mode!=='local'){x.fillStyle='#a59fd6';x.font='7px "Press Start 2P", monospace';x.textAlign='left';x.fillText(netInfo()+(mode==='guest'?'  '+Math.round(lat*2000)+'ms':''),8,14)}
+  if(mode!=='local'){x.fillStyle='#a59fd6';x.font='7px "Press Start 2P", monospace';x.textAlign='left';x.fillText(netInfo()+(sala&&sala.retardoMedido?'  '+Math.round(sala.retardo)+'ms':''),8,14)}
   if(st.state==='ready')txt('NIVEL '+st.lvl,250,18,'#ffcf3a');
   if(st.state==='clear')txt('¡LIMPIO! +500',250,16,'#5ee6c2');
   if(st.state==='over'){txt('FIN DE PARTIDA',230,18,'#ff6fae');txt('Pulsa disparo',270,10)}

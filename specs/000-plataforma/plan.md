@@ -1,6 +1,6 @@
 # Plan técnico: Plataforma
 
-> **Spec:** `specs/000-plataforma/spec.md` · **Estado:** Pendiente de aprobar §4 (WebRTC, D-009) · **Fecha:** 2026-10-20 · **Actualizado:** 2026-10-21
+> **Spec:** `specs/000-plataforma/spec.md` · **Estado:** Aprobado · **Fecha:** 2026-10-20 · **Actualizado:** 2026-10-21
 
 ## 1. Cumplimiento de la constitución
 - [x] P1 Sin build: `index.html` + `css/lanzador.css` + módulos ES en `src/`
@@ -19,7 +19,7 @@
 | `juegos/registro.js` | datos de cada juego (`docs/arquitectura.md` §3) |
 | `src/version.js` | versión visible |
 | `src/input/entradas.js` | acciones abstractas compartidas (teclado, mando, táctil); API en `docs/arquitectura.md` §6 |
-| `src/net/sala.js` *(pendiente)* | sala online compartida: código, señalización MQTT, WebRTC y respaldo |
+| `src/net/sala.js` | sala online compartida: código, señalización MQTT, WebRTC y respaldo |
 | `src/net/ice.js` *(pendiente)* | `servidoresIce()`: STUN públicos hoy; TURN del Worker en el futuro |
 
 ## 3. Menú principal
@@ -28,7 +28,7 @@
 - Teclado y mando vía `src/input/entradas.js` (desde v0.3.0): `left`/`right` eligen, `a` o `start` (salvo Esc) entran.
 - Al lanzar: clase `lanzando` (cartucho a la ranura + fundido) y navegación a los 480 ms; `pageshow` lo deshace al volver.
 
-## 4. Módulo de red compartido (pendiente)
+## 4. Módulo de red compartido
 Extraer de Revienta Burbujas: conexión a varios servidores MQTT, código, secuencias, medida de retardo y validación. API (igual para cualquier transporte):
 ```js
 const sala = await crearSala({ juego: 'id', anfitrion: true });   // → sala.codigo

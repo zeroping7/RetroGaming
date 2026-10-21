@@ -1,8 +1,8 @@
 // Primero red (siempre lo último si hay conexión) y, si no hay, lo guardado.
 // Sube CACHE al cambiar la lista FILES.
-const CACHE = 'rg-v4';
+const CACHE = 'rg-v5';
 const FILES = [
-  './', 'index.html', 'css/lanzador.css', 'src/lanzador.js', 'src/version.js', 'src/input/entradas.js', 'src/net/sala.js', 'src/net/ice.js', 'juegos/registro.js',
+  './', 'index.html', 'css/lanzador.css', 'src/lanzador.js', 'src/version.js', 'src/input/entradas.js', 'src/net/sala.js', 'src/net/ice.js', 'src/pantalla/orientacion.js', 'juegos/registro.js',
   'manifest.webmanifest', 'icon-192.png', 'icon-512.png',
   'juegos/revienta-burbujas/', 'juegos/revienta-burbujas/index.html',
   'juegos/revienta-burbujas/portada.svg', 'juegos/revienta-burbujas/icono.png',

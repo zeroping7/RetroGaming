@@ -326,6 +326,8 @@ $('share').onclick=async()=>{
   try{await navigator.clipboard.writeText(url);b.textContent='ENLACE COPIADO'}catch(e){b.textContent='CÓDIGO '+code}
   setTimeout(()=>{b.textContent='COMPARTIR ENLACE'},2000);
 };
+// Se juega en vertical: si el móvil está en horizontal, aviso "Gira el móvil" (HU-10)
+import('../../src/pantalla/orientacion.js').then(m=>m.vigilarOrientacion('revienta-burbujas')).catch(()=>{});
 // Entrar con un enlace ?sala=CODIGO: directo a unirse, sin escribirlo
 import('../../src/net/sala.js').then(net=>{const c=net.codigoDeUrl();if(!c)return;
   $('menu').hidden=true;$('join').hidden=false;$('code').value=c;closeNet();joinGame(c)}).catch(()=>{});

@@ -26,5 +26,5 @@
 - [ ] T021 — Aviso de código de otro juego (HU-5)
 - [x] T022 — Enlace para compartir la partida (HU-9, plan §6; tras T011) *(v0.4.1)*
   - Hecho cuando: el invitado entra en una partida de Revienta Burbujas tocando el enlace, sin escribir el código.
-- [ ] T023 — Orientación por juego (HU-10, plan §7)
+- [x] T023 — Orientación por juego (HU-10, plan §7) *(v0.4.2)*
   - Hecho cuando: en la app instalada el menú gira a horizontal y Revienta Burbujas en horizontal muestra "Gira el móvil".

@@ -14,5 +14,6 @@ export const JUEGOS = [
     online: true,                   // crear partida / unirse con código
     mismoDispositivo: true,         // 2 jugadores en el mismo móvil o PC
     claveRecord: 'rb-best',         // clave de localStorage con el récord (opcional)
+    orientacion: 'vertical',        // 'vertical' | 'horizontal' | 'libre' (D-007)
   },
 ];

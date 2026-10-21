@@ -10,6 +10,7 @@ src/
   input/entradas.js      # controles compartidos: teclado, mando y táctil → acciones (§6)
   net/sala.js            # sala online compartida: código, directa/MQTT, secuencias y retardo (§5)
   net/ice.js             # servidores STUN (y TURN en el futuro) para la conexión directa
+  pantalla/orientacion.js # vigilarOrientacion(id): capa "Gira el móvil" según el registro (§7)
 juegos/
   registro.js            # lista de juegos del menú (§3)
   <id>/
@@ -43,6 +44,7 @@ docs/  specs/  CLAUDE.md
   online: true,                     // crear partida / unirse con código
   mismoDispositivo: true,           // 2 jugadores en el mismo móvil o PC
   claveRecord: 'rb-best',           // opcional: clave de localStorage con el récord
+  orientacion: 'vertical',          // 'vertical' | 'horizontal' | 'libre' (D-007)
 }
 ```
 El menú rellena con ranuras "Próximamente" hasta tener al menos 3 cartuchos.
@@ -107,4 +109,5 @@ entradas.destruir();
 
 ## 7. App instalable y caché
 - `sw.js`: primero red y, sin conexión, lo guardado. Al cambiar la lista `FILES`, subir `CACHE`.
-- `manifest.webmanifest`: "RetroGaming", pantalla completa, vertical. Al instalarla abre el menú.
+- `manifest.webmanifest`: "RetroGaming", pantalla completa, sin orientación fija (D-007). Al instalarla abre el menú.
+- **Orientación:** cada juego llama a `vigilarOrientacion('<id>')` de `src/pantalla/orientacion.js`. En móvil, si no coincide con la del registro, tapa la pantalla con "Gira el móvil". En PC no hace nada.

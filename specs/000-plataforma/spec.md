@@ -51,8 +51,8 @@ Abrir la web desde cualquier dispositivo, elegir un juego como en una consola re
 - [x] Si la partida ya no existe, ve el mismo aviso que con un código incorrecto.
 
 **HU-10 — Orientación.** Como jugador, quiero que cada juego use la orientación que mejor le va.
-- [ ] La app instalada no fija la orientación: el menú funciona en vertical y en horizontal.
-- [ ] Cada juego indica en su spec si es vertical u horizontal; si tengo el móvil al revés, veo "Gira el móvil".
+- [x] La app instalada no fija la orientación: el menú funciona en vertical y en horizontal.
+- [x] Cada juego indica en su spec si es vertical u horizontal; si tengo el móvil al revés, veo "Gira el móvil".
 
 ## 4. Requisitos no funcionales
 - Menú interactivo en < 3 s con 4G (R4).

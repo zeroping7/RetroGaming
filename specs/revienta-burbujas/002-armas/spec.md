@@ -1,6 +1,6 @@
 # Spec de funcionalidad: Armas y objetos de Revienta Burbujas
 
-> **ID:** 002-armas · **Estado:** En revisión · **Fecha:** 2026-10-21
+> **ID:** 002-armas · **Estado:** Aprobada · **Fecha:** 2026-10-21
 > Amplía el juego `specs/revienta-burbujas/001-revienta-burbujas/`. Inspirado en los arcades de burbujas de los 90 (mecánicas, no sus gráficos ni nombres: constitución AR2).
 > El juego de puzzle/tablero previsto como siguiente pasa a ser la spec 003.
 
@@ -28,13 +28,13 @@ Solo se lleva un arma a la vez. Todas parten las burbujas igual que hoy (la gran
 | **Dinamita** (limpieza) | todas las burbujas pasan al tamaño más pequeño |
 | **Reloj** (limpieza) | las burbujas se congelan unos segundos |
 
-Los objetos son iconos pequeños que caen desde donde estalló la burbuja, se quedan en el suelo un rato y se recogen tocándolos. El efecto es inmediato.
+Los objetos son iconos pequeños que caen desde donde estalló la burbuja, al tocar el suelo esperan **10 segundos** (parpadeando al final) y, si nadie los coge, desaparecen. Se recogen tocándolos. El efecto es inmediato.
 
 ## 5. Historias de usuario
 **HU-1 — Encontrar objetos.** Como jugador, quiero que a veces caiga un objeto al reventar una burbuja para tener ayudas.
 - [ ] Dado que reviento una burbuja, cuando toca, entonces cae un objeto que puedo ver y reconocer.
 - [ ] Dado un objeto en el suelo, cuando paso por encima, entonces se aplica su efecto y desaparece.
-- [ ] Dado un objeto que nadie recoge, cuando pasa un tiempo, entonces parpadea y desaparece.
+- [ ] Dado un objeto en el suelo que nadie recoge, cuando pasan 10 s, entonces desaparece (parpadea los últimos 2 s).
 
 **HU-2 — Cambiar de arma.** Como jugador, quiero recoger armas distintas para cubrir más pantalla.
 - [ ] Dado el arpón doble, cuando disparo dos veces seguidas, entonces veo dos arpones a la vez.

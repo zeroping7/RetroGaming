@@ -108,6 +108,6 @@ entradas.destruir();
 - Las direcciones se repiten al mantenerlas: el teclado con su repetición propia; el mando a los 350 ms y luego cada 160 ms.
 
 ## 7. App instalable y caché
-- `sw.js`: primero red y, sin conexión, lo guardado. Al cambiar la lista `FILES`, subir `CACHE`.
+- `sw.js`: primero red (con `cache: 'no-cache'`, para que una versión recién publicada se vea al recargar) y, sin conexión, lo guardado. Al cambiar la lista `FILES`, subir `CACHE`.
 - `manifest.webmanifest`: "RetroGaming", pantalla completa, sin orientación fija (D-007). Al instalarla abre el menú.
 - **Orientación:** cada juego llama a `vigilarOrientacion('<id>')` de `src/pantalla/orientacion.js`. En móvil, si no coincide con la del registro, tapa la pantalla con "Gira el móvil". En PC no hace nada.

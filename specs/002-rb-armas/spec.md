@@ -1,6 +1,6 @@
 # Spec de funcionalidad: Armas y objetos de Revienta Burbujas
 
-> **ID:** 002-rb-armas · **Estado:** Borrador · **Fecha:** 2026-10-21
+> **ID:** 002-rb-armas · **Estado:** En revisión · **Fecha:** 2026-10-21
 > Amplía el juego `specs/001-revienta-burbujas/`. Inspirado en los arcades de burbujas de los 90 (mecánicas, no sus gráficos ni nombres: constitución AR2).
 > El juego de puzzle/tablero previsto como siguiente pasa a ser la spec 003.
 
@@ -61,16 +61,16 @@ Los objetos son iconos pequeños que caen desde donde estalló la burbuja, se qu
 - Sonido (irá en otra spec).
 - Armas fuera del estilo del arpón (pistola, láser…).
 - Gráficos o nombres del juego original.
+- Pixel art: el juego mantiene sus formas planas (P9).
 
 ## 8. Preguntas abiertas
-Cada una lleva mi propuesta; con "sí" vale.
-- [ ] **P1 — Probabilidad de que caiga un objeto.** Propuesta: 1 de cada 8 burbujas reventadas, máximo 2 objetos en pantalla.
-- [ ] **P2 — ¿Se pierde el arma al morir?** Propuesta: sí, vuelves al arpón normal (como en el arcade).
-- [ ] **P3 — ¿Las armas duran para siempre o un tiempo?** Propuesta: para siempre hasta morir o recoger otra; los potenciadores sí son temporales (velocidad 10 s, reloj 5 s).
-- [ ] **P4 — Arpón fijo.** Propuesta: se queda clavado 3 s o hasta que lo toca una burbuja; solo uno a la vez.
-- [ ] **P5 — Arpón triple.** Propuesta: tres líneas paralelas separadas 24 píxeles (centro y a cada lado), un disparo a la vez.
-- [ ] **P6 — Escudo.** Propuesta: aguanta un golpe y no caduca; al romperse, 1 s de invulnerabilidad parpadeando.
-- [ ] **P7 — ¿Dinamita y reloj, o ninguno?** Propuesta: los dos, pero más raros que el resto.
-- [ ] **P8 — Puntos.** Propuesta: recoger un objeto da 100 puntos.
-- [ ] **P9 — Pixel art.** La constitución (AR1) pide primero formas planas y el arte en la fase de pulido. Propuesta: armas y objetos primero en formas simples pero ya reconocibles; el pixel art de todo el juego (jugadores, burbujas, objetos), dibujado por código, en una tarea final de pulido de esta misma spec.
-- [ ] **P10 — Estructura del código (D-006).** Es un cambio a fondo del juego. Propuesta: aprovecharlo para separar la lógica en `sim.js` con su `tests.html` (constitución A1 y Q3), sin pasar a Phaser.
+- [x] P1 — Cae un objeto en 1 de cada 8 burbujas reventadas, máximo 2 en pantalla.
+- [x] P2 — El arma se pierde al morir: se vuelve al arpón normal.
+- [x] P3 — Las armas duran hasta morir o recoger otra; los potenciadores son temporales (velocidad 10 s, reloj 5 s).
+- [x] P4 — El arpón fijo se queda clavado 3 s o hasta que lo toca una burbuja; uno a la vez.
+- [x] P5 — El arpón triple lanza tres líneas paralelas separadas 24 píxeles; un disparo a la vez.
+- [x] P6 — El escudo aguanta un golpe y no caduca; al romperse, 1 s de invulnerabilidad parpadeando.
+- [x] P7 — Dinamita y reloj, los dos, más raros que el resto.
+- [x] P8 — Recoger un objeto da 100 puntos.
+- [x] P9 — Sin pixel art: armas y objetos con el mismo estilo de formas planas del juego (constitución AR3).
+- [x] P10 — Se separa la lógica en `sim.js` con su `tests.html` (A1, Q3), sin pasar a Phaser.

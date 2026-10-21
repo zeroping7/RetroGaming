@@ -46,6 +46,7 @@ Los objetos son iconos pequeños que caen desde donde estalló la burbuja, al to
 - [ ] Dado el escudo, cuando me toca una burbuja, entonces pierdo el escudo pero no la vida.
 - [ ] Dado la dinamita, entonces todas las burbujas pasan a ser pequeñas.
 - [ ] Dado el reloj, entonces las burbujas se paran unos segundos y lo indica el HUD.
+- [ ] Dado el reloj activo, cuando un arpón toca una burbuja congelada, entonces se rompe igual que siempre.
 
 **HU-4 — Con dos jugadores.**
 - [ ] Dado el modo 2 jugadores (local u online), cuando uno recoge un arma, entonces solo cambia la suya.

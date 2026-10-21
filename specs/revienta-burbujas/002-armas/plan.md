@@ -1,6 +1,6 @@
 # Plan técnico: Armas y objetos de Revienta Burbujas
 
-> **Spec:** `specs/revienta-burbujas/002-armas/spec.md` · **Estado:** Borrador · **Fecha:** 2026-10-21
+> **Spec:** `specs/revienta-burbujas/002-armas/spec.md` · **Estado:** Aprobado · **Fecha:** 2026-10-21
 > Describe CÓMO. Primero se separa el código actual sin cambiar nada del juego; después se añaden armas y objetos encima.
 
 ## 1. Cumplimiento de la constitución
@@ -72,7 +72,7 @@
 | Recoger | caja del jugador contra caja del objeto (16×16 px); +100 puntos |
 | Escudo | aguanta un golpe; luego 1 s invulnerable parpadeando |
 | Dinamita | cada burbuja se parte hasta el tamaño 1 (máx. 40 en pantalla) |
-| Reloj | burbujas quietas 5 s (siguen haciendo daño); el HUD muestra la cuenta |
+| Reloj | burbujas quietas 5 s; siguen haciendo daño y **se pueden romper con un disparo** (los trozos también quedan quietos hasta que acaba); el HUD muestra la cuenta |
 | Al morir | el jugador tocado vuelve al arpón normal y pierde escudo y velocidad; se borran los objetos del suelo |
 | Al pasar de nivel | se conservan las armas; se acaban velocidad y reloj |
 
@@ -102,6 +102,6 @@ Sin pantallas nuevas. En el HUD se añaden un icono pequeño con el arma de cada
 | La predicción de varios arpones del invitado da saltos | media | Misma estrategia que el disparo actual; probar con `?lag=` cuando exista (T012 de 000) o con datos móviles |
 
 ## 9. Pruebas
-- **`tests.html`:** partir una burbuja; límite de arpones por arma; fijo clavado 3 s; triple con 3 líneas; escudo que absorbe un golpe; objeto que desaparece a los 10 s en el suelo; probabilidad repetible con semilla; dinamita; reloj; perder el arma al morir; `codificar` y `decodificar` de ida y vuelta.
+- **`tests.html`:** partir una burbuja; límite de arpones por arma; fijo clavado 3 s; triple con 3 líneas; escudo que absorbe un golpe; objeto que desaparece a los 10 s en el suelo; probabilidad repetible con semilla; dinamita; reloj (congela, pero un disparo sigue rompiendo y los trozos quedan quietos); perder el arma al morir; `codificar` y `decodificar` de ida y vuelta.
 - **Manual en móvil:** jugar hasta que caigan objetos y probar cada uno.
 - **Online:** dos móviles; los dos ven los mismos objetos y cada uno su arma.

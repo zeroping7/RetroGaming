@@ -70,3 +70,12 @@ Una entrada por decisión. Nunca se borran; si cambian, se añade una nueva que 
 - Decisión: `juegos/<id>/?sala=CODIGO`, compartido con `navigator.share` (o copiado al portapapeles). El código sigue existiendo.
 - Alternativas descartadas: código en el hash `#` (menos claro); enlace al menú principal (un paso más para el invitado).
 - Consecuencias: la lógica vive en `src/net/`, así que llega después de T011.
+
+## D-009 — WebRTC con TURN de Cloudflare para el online
+- Fecha: 2026-10-21
+- Estado: Aceptada (pendiente de confirmar con la página de medición)
+- Contexto: el online por MQTT (D-004) tiene lag: los mensajes van a servidores públicos lejanos y viajan por TCP, así que un paquete perdido frena a todos los siguientes. WebRTC falló antes (D-002) porque no había TURN.
+- Decisión: datos de juego por WebRTC DataChannel no fiable y sin orden (como UDP). Se usa STUN y TURN de Cloudflare (1000 GB gratis al mes y después 0,05 $/GB). MQTT queda solo para encontrarse con el código y como respaldo si WebRTC no conecta. Las credenciales TURN las da un Worker de Cloudflare (`servidor/turn/worker.js`).
+- Excepción a P2 (sin backend propio): el Worker es mínimo y sin estado, solo genera credenciales, y si cae el juego sigue funcionando por MQTT.
+- Alternativas descartadas: Metered (el plan gratis son 500 MB al mes y el de pago empieza en 99 $/mes); ExpressTURN (credenciales fijas visibles en el repo y sin garantías).
+- Consecuencias: `src/net/` (T011) nace con WebRTC y respaldo MQTT. El proveedor TURN es una única función de configuración, intercambiable.

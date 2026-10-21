@@ -163,7 +163,7 @@ function decode(d){
 let sala=null,heardAt=0,helloAt=0,joinStart=0,netGen=0;
 function closeNet(){netGen++;if(sala){sala.cerrar();sala=null}hostState=null;heardAt=0;gview=null;lastSnap=-1;guestX=null;lat=0.15}
 function enterOnline(asHost,c){code=c;mode=asHost?'host':'guest';st={state:'wait'};hideMenus();$('pad2').hidden=true;$('quit').hidden=false}
-function netInfo(){return sala?sala.servidores():''}
+function netInfo(){return sala?(sala.via==='directa'?'DIRECTA':sala.servidores()):''}
 function onMsg(tp,d){
   if(mode==='host'&&tp==='in'){heardAt=performance.now();guestIn={l:!!d.l,r:!!d.r,f:!!d.f};guestX=typeof d.x==='number'&&isFinite(d.x)?d.x:null;guestXAt=performance.now();guestDir=Math.max(-1,Math.min(1,d.d|0));guestLat=sala.retardo/2000}
   if(mode==='guest'&&tp==='st'){heardAt=performance.now();hostState=d}
@@ -173,7 +173,7 @@ async function openSala(c,asHost,onFail){
   const gen=++netGen;
   try{
     const net=await import('../../src/net/sala.js');
-    const s=await net.crearSala({juego:'revienta-burbujas',version:3,codigo:c||net.codigoAleatorio(),escuchar:[asHost?'in':'st']});
+    const s=await net.crearSala({juego:'revienta-burbujas',version:3,codigo:c||net.codigoAleatorio(),escuchar:[asHost?'in':'st'],anfitrion:asHost});
     if(gen!==netGen){s.cerrar();return null}
     sala=s;s.alRecibir(onMsg);return s;
   }catch(e){if(gen===netGen)onFail(e.message&&e.message.startsWith('No se pudo')?e.message:'Sin conexión: el modo online necesita internet.');return null}

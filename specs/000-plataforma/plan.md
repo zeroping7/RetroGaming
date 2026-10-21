@@ -20,7 +20,7 @@
 | `src/version.js` | versión visible |
 | `src/input/entradas.js` | acciones abstractas compartidas (teclado, mando, táctil); API en `docs/arquitectura.md` §6 |
 | `src/net/sala.js` | sala online compartida: código, señalización MQTT, WebRTC y respaldo |
-| `src/net/ice.js` *(pendiente)* | `servidoresIce()`: STUN públicos hoy; TURN del Worker en el futuro |
+| `src/net/ice.js` | `servidoresIce()`: STUN públicos hoy; TURN del Worker en el futuro |
 
 ## 3. Menú principal
 - Estante horizontal con `scroll-snap`; el cartucho más cercano al centro es el seleccionado.
@@ -36,8 +36,8 @@ sala.enviar('in' | 'st', datos);  sala.alRecibir((tema, datos) => {});  sala.cer
 sala.via;      // 'directa' (WebRTC) | 'mqtt'
 sala.retardo;  // ida y vuelta medido, en ms
 ```
-- **WebRTC (D-009):** al unirse, el invitado crea la conexión y un DataChannel `{ ordered: false, maxRetransmits: 0 }`; la oferta, la respuesta y los candidatos ICE viajan por MQTT en el tema `<juego>/v3/<codigo>/rtc`.
-- **Respaldo:** si el canal no abre en 5 s, o se cierra, todo sigue por MQTT sin cortar la partida. MQTT sigue conectado durante la partida para poder volver a él.
+- **WebRTC (D-009):** al unirse, el invitado crea la conexión y un DataChannel `{ ordered: false, maxRetransmits: 2 }` (2 reintentos rápidos para no perder, por ejemplo, un disparo); la oferta, la respuesta y los candidatos ICE viajan por MQTT en el tema `<juego>/v3/<codigo>/rtc`.
+- **Respaldo:** si el canal no abre en 6 s (hasta 3 intentos), o se cierra, todo sigue por MQTT sin cortar la partida. MQTT sigue conectado durante la partida para poder volver a él.
 - `servidoresIce()` devuelve `stun:stun.l.google.com:19302` y `stun:stun.cloudflare.com:3478`.
 - `?lag=` y `?loss=` se aplican dentro de `enviar`, para los dos transportes.
 - El HUD online muestra la vía (`DIRECTA` / `MQTT`) y el retardo.

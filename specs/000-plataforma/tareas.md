@@ -15,7 +15,7 @@
 - [x] T011 — `src/net/sala.js`: sala MQTT compartida extraída de Revienta Burbujas *(v0.3.4)*
   - Hecho cuando: Revienta Burbujas funciona online igual que antes usando el módulo; anfitrión e invitado ven el retardo en ms
   - Probar en el móvil: crear partida en un móvil, unirse desde otro y jugar un nivel
-- [ ] T014 — WebRTC directo con respaldo MQTT (plan §4, D-009)
+- [x] T014 — WebRTC directo con respaldo MQTT (plan §4, D-009) *(v0.4.0)*
   - Hecho cuando: en la misma WiFi el HUD muestra `DIRECTA` y el retardo baja claramente respecto a MQTT; si se fuerza el fallo, sigue por MQTT
   - Probar en el móvil: partida entre los dos móviles en casa, comparar los ms con los de MQTT
 - [ ] T012 — `?debug=1` y `?lag=&loss=` en `src/net/` (Q1, Q2)

@@ -8,7 +8,8 @@ src/
   lanzador.js            # lógica del menú: selección, táctil, teclado, mando
   version.js             # export const VERSION = 'x.y.z'
   input/entradas.js      # controles compartidos: teclado, mando y táctil → acciones (§6)
-  net/sala.js            # sala online compartida: código, servidores, secuencias y retardo (§5)
+  net/sala.js            # sala online compartida: código, directa/MQTT, secuencias y retardo (§5)
+  net/ice.js             # servidores STUN (y TURN en el futuro) para la conexión directa
 juegos/
   registro.js            # lista de juegos del menú (§3)
   <id>/
@@ -54,7 +55,10 @@ Opciones según el registro: **1 jugador**, **2 jugadores** (mismo dispositivo),
 - Si se deja de recibir durante 4 s, ambos pasan a "Esperando…" hasta que vuelve la conexión.
 
 ## 5. Online en tiempo real
-**Transporte (D-004):** MQTT sobre WebSocket seguro contra **varios servidores públicos a la vez** (shiftr.io, HiveMQ y EMQX). Todo se envía por todos; se acepta lo que llegue primero por cualquiera y se descartan duplicados por número de secuencia.
+**Transporte:**
+- **Directa (D-009):** WebRTC DataChannel sin orden y con 2 reintentos, de móvil a móvil. En la misma WiFi no sale de casa. STUN público en `src/net/ice.js`.
+- **MQTT (D-004):** WebSocket seguro contra **varios servidores públicos a la vez** (shiftr.io, HiveMQ y EMQX). Todo se envía por todos; se acepta lo primero que llegue y se descartan duplicados por secuencia. Siempre conectado: sirve para encontrarse, para la señalización de WebRTC (tema `/rtc`) y como respaldo.
+- El invitado propone la directa al entrar (hasta 3 intentos de 6 s). Mientras no abre, o si se cae, se juega por MQTT. El HUD muestra `DIRECTA` o el estado de los servidores, y los ms.
 
 **Módulo:** todo lo genérico vive en `src/net/sala.js` (API en el plan de 000, §4). Los juegos lo cargan con `import('../../src/net/sala.js')`; la sala carga MQTT.js sola.
 

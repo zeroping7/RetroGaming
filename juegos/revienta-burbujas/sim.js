@@ -78,6 +78,7 @@ function moverBurbuja(b, dt) {
  * @param {Entrada[]} entradas  una por jugador
  */
 export function paso(st, entradas, dt) {
+  guardarAnterior(st);
   if (st.state === 'ready') { st.t -= dt; if (st.t <= 0) st.state = 'play'; return; }
   if (st.state === 'dead') { st.t -= dt; if (st.t <= 0) { if (st.lives <= 0) { st.state = 'over'; st.t = 1; } else reset(st); } return; }
   if (st.state === 'clear') { st.t -= dt; if (st.t <= 0) { st.lvl++; reset(st); } return; }
@@ -124,6 +125,14 @@ export function paso(st, entradas, dt) {
   st.balls = nb;
   st.pop = st.pop.filter((q) => (q.t -= dt) > 0);
   if (!st.balls.length) { st.state = 'clear'; st.t = 1.6; st.score += 500; }
+}
+
+/** Guarda la posición del tick anterior (ax, ay, atop) para que el dibujo pueda
+ *  interpolar entre ticks en pantallas de 90 o 120 Hz. No se envía por la red. */
+function guardarAnterior(st) {
+  if (!st.ps) return;
+  for (const b of st.balls) { b.ax = b.x; b.ay = b.y; }
+  for (const p of st.ps) { p.ax = p.x; if (p.shot) p.shot.atop = p.shot.top; }
 }
 
 /** Instantánea compacta para enviar al invitado: números redondeados y arrays planos. */

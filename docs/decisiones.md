@@ -53,7 +53,7 @@ Una entrada por decisión. Nunca se borran; si cambian, se añade una nueva que 
 - Estado: Aceptada
 - Contexto: el juego es anterior a la constitución y funciona.
 - Decisión: sigue con canvas 2D sin Phaser y con menús sin navegación por mando (incumple C3, tarea T013 de 000).
-- Ya resuelto: la red está en `src/net/` (T011 y T014 de 000) y la lógica en `sim.js`, el dibujo en `render.js` y las pruebas en `tests.html` (A1 y Q3, T001 de 002). Falta el paso fijo (A2), que llega en T002 de 002.
+- Ya resuelto: la red está en `src/net/` (T011 y T014 de 000) y la lógica en `sim.js`, el dibujo en `render.js` y las pruebas en `tests.html` (A1 y Q3, T001 de 002) y el paso fijo de 60 ticks/s (A2, T002 de 002).
 - Consecuencias: los juegos nuevos no pueden usar esta excepción.
 
 ## D-007 — Cada juego elige su orientación

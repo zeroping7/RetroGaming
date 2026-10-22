@@ -9,7 +9,7 @@
   - Archivos: `juegos/revienta-burbujas/index.html`, `sim.js`, `render.js`, `tests.html`, `sw.js`
   - Hecho cuando: el juego se ve y se juega exactamente igual (1J, 2J y online) y `tests.html` sale en verde (partir burbujas, puntos, vidas, codificar/decodificar)
   - Probar en el móvil: una partida de 1 jugador, una de 2 en el mismo móvil y una online; abrir `juegos/revienta-burbujas/tests.html`
-- [ ] T002 — Paso fijo de 60 ticks/s (A2)
+- [x] T002 — Paso fijo de 60 ticks/s (A2) *(v0.5.1)*
   - Hecho cuando: la velocidad del juego es la misma en cualquier móvil, aunque vaya a pocos FPS
   - Probar en el móvil: jugar un nivel; debe sentirse igual que antes
 

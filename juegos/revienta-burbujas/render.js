@@ -13,6 +13,7 @@ const FUENTE = '"Press Start 2P", monospace';
  * @property {string} servidores  estado de los servidores (pantalla de espera)
  * @property {number} record
  * @property {number} ahora    ms (para animaciones del menú)
+ * @property {number} alfa     0-1: cuánto del siguiente tick ha pasado (interpolación; 1 = sin interpolar)
  */
 
 function txt(x, s, y, size, col) {
@@ -29,6 +30,9 @@ function fondo(x) {
 
 /** @param {CanvasRenderingContext2D} x @param {object} st estado (o {state:'menu'|'wait'}) @param {Vista} v */
 export function dibujar(x, st, v) {
+  const al = v.alfa;
+  // Posición entre el tick anterior y el actual (si no hay anterior, la actual)
+  const L = (antes, ahora) => (antes === undefined ? ahora : antes + (ahora - antes) * al);
   fondo(x);
   if (st.state === 'menu') {
     const t = v.ahora / 1000; x.globalAlpha = 0.3;
@@ -47,16 +51,16 @@ export function dibujar(x, st, v) {
 
   st.ps.forEach((p, i) => {
     if (!p.shot) return;
-    const c = PCOL[i].shot;
+    const c = PCOL[i].shot, top = L(p.shot.atop, p.shot.top);
     x.strokeStyle = c; x.lineWidth = 3; x.setLineDash([6, 4]);
-    x.beginPath(); x.moveTo(p.shot.x, FLOOR - p.h); x.lineTo(p.shot.x, p.shot.top); x.stroke(); x.setLineDash([]);
+    x.beginPath(); x.moveTo(p.shot.x, FLOOR - p.h); x.lineTo(p.shot.x, top); x.stroke(); x.setLineDash([]);
     x.fillStyle = c; x.beginPath();
-    x.moveTo(p.shot.x - 6, p.shot.top + 8); x.lineTo(p.shot.x, p.shot.top - 2); x.lineTo(p.shot.x + 6, p.shot.top + 8); x.fill();
+    x.moveTo(p.shot.x - 6, top + 8); x.lineTo(p.shot.x, top - 2); x.lineTo(p.shot.x + 6, top + 8); x.fill();
   });
   for (const b of st.balls) {
-    const r = R[b.s];
-    x.fillStyle = COL[b.s]; x.beginPath(); x.arc(b.x, b.y, r, 0, 7); x.fill();
-    x.fillStyle = 'rgba(255,255,255,.55)'; x.beginPath(); x.arc(b.x - r * 0.35, b.y - r * 0.35, r * 0.25, 0, 7); x.fill();
+    const r = R[b.s], bx = L(b.ax, b.x), by = L(b.ay, b.y);
+    x.fillStyle = COL[b.s]; x.beginPath(); x.arc(bx, by, r, 0, 7); x.fill();
+    x.fillStyle = 'rgba(255,255,255,.55)'; x.beginPath(); x.arc(bx - r * 0.35, by - r * 0.35, r * 0.25, 0, 7); x.fill();
   }
   for (const q of st.pop) {
     x.strokeStyle = COL[q.s]; x.lineWidth = 2;
@@ -65,12 +69,12 @@ export function dibujar(x, st, v) {
   const yo = v.modo === 'guest' ? 1 : v.modo === 'host' ? 0 : -1;
   st.ps.forEach((p, i) => {
     if (st.state === 'dead' && st.hit === i && Math.floor(st.t * 10) % 2) return;
-    const bx = p.x - p.w / 2, by = FLOOR - p.h, c = PCOL[i];
+    const px = L(p.ax, p.x), bx = px - p.w / 2, by = FLOOR - p.h, c = PCOL[i];
     x.fillStyle = c.body; x.fillRect(bx + 3, by + 12, p.w - 6, p.h - 12);
     x.fillStyle = '#ffd9b0'; x.fillRect(bx + 6, by, p.w - 12, 13);
     x.fillStyle = '#0d0b1f'; x.fillRect(bx + 9, by + 5, 3, 3); x.fillRect(bx + p.w - 12, by + 5, 3, 3);
     x.fillStyle = c.hat; x.fillRect(bx + 4, by - 3, p.w - 8, 5);
-    if (st.n > 1) { x.fillStyle = '#f4f1ff'; x.font = `7px ${FUENTE}`; x.textAlign = 'center'; x.fillText(i === yo ? 'TÚ' : 'J' + (i + 1), p.x, by - 8); }
+    if (st.n > 1) { x.fillStyle = '#f4f1ff'; x.font = `7px ${FUENTE}`; x.textAlign = 'center'; x.fillText(i === yo ? 'TÚ' : 'J' + (i + 1), px, by - 8); }
   });
 
   x.font = `10px ${FUENTE}`;

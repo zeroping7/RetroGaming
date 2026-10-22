@@ -116,6 +116,17 @@ prueba('Las burbujas rebotan y no salen de la pantalla', () => {
   }
 });
 
+prueba('Cada tick guarda la posición anterior para interpolar el dibujo (y no viaja por la red)', () => {
+  const st = jugando(1);
+  st.balls = [{ s: 2, x: 100, y: 100, vx: 70, vy: 0 }];
+  paso(st, [{ left: false, right: true, a: false }], DT);
+  const b = st.balls[0], p = st.ps[0];
+  igual(b.ax, 100, 'burbuja: x anterior'); cierto(b.x > 100, 'burbuja: se ha movido');
+  cierto(p.ax < p.x, 'jugador: x anterior a la izquierda');
+  const d = codificar(st);
+  cierto(!JSON.stringify(d).includes('ax'), 'la instantánea no lleva ax');
+});
+
 prueba('codificar y decodificar dan el mismo estado (redondeado)', () => {
   const st = jugando(2);
   st.ps[0].shot = { x: 120.4, top: 300.6 };

@@ -188,10 +188,10 @@ function guestStep(dt){
 function sendState(dt){sendAcc+=dt;if(sendAcc<1/25||!sala)return;sendAcc=0;sala.enviar('st',codificar(st))}
 
 /* ---------- dibujo: render.js ---------- */
-const vista={modo:'menu',codigo:'',red:'',servidores:'',record:0,ahora:0}; // reutilizada (R5)
+const vista={modo:'menu',alfa:1,codigo:'',red:'',servidores:'',record:0,ahora:0}; // reutilizada (R5)
 function draw(){
   const sh=$('share'),ver=mode==='host'&&st.state==='wait';if(sh.hidden===ver)sh.hidden=!ver;
-  vista.modo=mode;vista.codigo=code;vista.record=best;vista.ahora=performance.now();
+  vista.modo=mode;vista.alfa=mode==='guest'?1:alfa;vista.codigo=code;vista.record=best;vista.ahora=performance.now();
   vista.servidores=netInfo();vista.red=vista.servidores+(sala&&sala.retardoMedido?'  '+Math.round(sala.retardo)+'ms':'');
   dibujar(x,st,vista);
 }
@@ -243,12 +243,28 @@ function pollPads(){
   });
 }
 
-let last=performance.now();
+// Paso fijo (constitución A2): la partida avanza siempre en ticks de 1/60 s, vaya el móvil
+// a los FPS que vaya. Si un fotograma tarda más, se hacen varios ticks seguidos; el dibujo
+// interpola entre el tick anterior y el actual para que se vea suave a 90 o 120 Hz.
+const TICK=1/60,MAX_TICKS=8;
+let last=performance.now(),acc=0,alfa=1;
 function loop(t){
-  const dt=Math.min(.033,(t-last)/1000);last=t;pollPads();
-  if(mode==='local')update(dt);
-  else if(mode==='host'){if(netTick(dt)){update(dt);sendState(dt)}}
-  else if(mode==='guest')netTick(dt);
+  const dt=Math.min(0.25,Math.max(0,(t-last)/1000));last=t;pollPads();
+  if(mode==='local'||mode==='host'){
+    acc+=dt;let n=0;
+    while(acc>=TICK&&n<MAX_TICKS){
+      acc-=TICK;n++;
+      if(mode==='local')update(TICK);
+      else if(mode==='host'){if(netTick(TICK)){update(TICK);sendState(TICK)}}
+      else break; // se volvió al menú durante los ticks
+    }
+    if(n===MAX_TICKS)acc=0; // el móvil va muy lento: mejor ir más lento que dar saltos
+    alfa=acc/TICK;
+  }else{
+    acc=0;alfa=1;
+    // el invitado no simula: dibuja lo que recibe más su predicción, con el tiempo real
+    if(mode==='guest')netTick(Math.min(0.033,dt));
+  }
   draw();requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);

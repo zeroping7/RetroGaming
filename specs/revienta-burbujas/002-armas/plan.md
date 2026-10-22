@@ -4,8 +4,8 @@
 > Describe CÓMO. Primero se separa el código actual sin cambiar nada del juego; después se añaden armas y objetos encima.
 
 ## 1. Cumplimiento de la constitución
-- [ ] A1 La lógica pasa a `sim.js` puro (sin canvas ni DOM): hoy está mezclada en `index.html` (D-006)
-- [ ] A2 Paso fijo de 60 ticks/s: hoy avanza con el tiempo de cada fotograma
+- [x] A1 La lógica pasa a `sim.js` puro (sin canvas ni DOM): hoy está mezclada en `index.html` (D-006)
+- [x] A2 Paso fijo de 60 ticks/s, con interpolación al dibujar (pantallas de 90/120 Hz); el invitado no simula y sigue con el tiempo real
 - [x] A3 1 jugador usa el mismo camino que el anfitrión (ya es así)
 - [ ] A5 `sim.js` lee acciones abstractas `{ left, right, a }`; `index.html` traduce teclado, táctil y mando
 - [x] A6 Carpeta propia y botón de volver (ya es así)

@@ -33,4 +33,4 @@
 ## Fase 2 — Afinar
 > T012–T016 se hicieron juntas a petición del usuario; se prueban todas y después se ajustan valores aquí.
 > Modo de prueba: `juegos/revienta-burbujas/?objetos=todos` (o `?objetos=fijo,reloj`) hace que caiga siempre un objeto, de esos tipos y por turnos.
-- [ ] T020 — Ajustes tras probar (velocidades, tiempos, probabilidades, aspecto)
+- [x] T020 — Ajustes tras probar (velocidades, tiempos, probabilidades, aspecto) → probado por el usuario, sin cambios

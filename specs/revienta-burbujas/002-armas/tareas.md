@@ -17,7 +17,7 @@
 - [x] T010 — Objetos que caen *(v0.6.0)*
   - Hecho cuando: 1 de cada 8 burbujas deja un objeto (máx. 2); cae, espera 10 s en el suelo (parpadea los 2 últimos) y desaparece; al recogerlo da +100 (su efecto llega en las tareas siguientes)
   - Probar en el móvil: jugar hasta que caiga uno; cogerlo y dejar otro sin coger
-- [ ] T011 — Arpón doble, espera entre disparos y perder el arma al morir
+- [x] T011 — Arpón doble, espera entre disparos y perder el arma al morir *(v0.6.1)*
   - Hecho cuando: con el doble hay hasta 2 arpones a la vez; al morir se vuelve al normal; online el invitado ve sus dos arpones al instante
 - [ ] T012 — Arpón fijo
   - Hecho cuando: al llegar al techo se queda clavado 3 s (o hasta tocar una burbuja) y revienta lo que lo toque; online, también al instante para el invitado

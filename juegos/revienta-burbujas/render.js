@@ -82,12 +82,14 @@ export function dibujar(x, st, v) {
   }
 
   st.ps.forEach((p, i) => {
-    if (!p.shot) return;
-    const c = PCOL[i].shot, top = L(p.shot.atop, p.shot.top);
-    x.strokeStyle = c; x.lineWidth = 3; x.setLineDash([6, 4]);
-    x.beginPath(); x.moveTo(p.shot.x, FLOOR - p.h); x.lineTo(p.shot.x, top); x.stroke(); x.setLineDash([]);
-    x.fillStyle = c; x.beginPath();
-    x.moveTo(p.shot.x - 6, top + 8); x.lineTo(p.shot.x, top - 2); x.lineTo(p.shot.x + 6, top + 8); x.fill();
+    const c = PCOL[i].shot;
+    for (const a of p.arpones) {
+      const top = L(a.atop, a.top);
+      x.strokeStyle = c; x.lineWidth = 3; x.setLineDash([6, 4]);
+      x.beginPath(); x.moveTo(a.x, FLOOR - p.h); x.lineTo(a.x, top); x.stroke(); x.setLineDash([]);
+      x.fillStyle = c; x.beginPath();
+      x.moveTo(a.x - 6, top + 8); x.lineTo(a.x, top - 2); x.lineTo(a.x + 6, top + 8); x.fill();
+    }
   });
   for (const b of st.balls) {
     const r = R[b.s], bx = L(b.ax, b.x), by = L(b.ay, b.y);

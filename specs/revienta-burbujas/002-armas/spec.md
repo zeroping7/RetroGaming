@@ -37,7 +37,7 @@ Los objetos son iconos pequeños que caen desde donde estalló la burbuja, al to
 - [x] Dado un objeto en el suelo que nadie recoge, cuando pasan 10 s, entonces desaparece (parpadea los últimos 2 s).
 
 **HU-2 — Cambiar de arma.** Como jugador, quiero recoger armas distintas para cubrir más pantalla.
-- [ ] Dado el arpón doble, cuando disparo dos veces seguidas, entonces veo dos arpones a la vez.
+- [x] Dado el arpón doble, cuando disparo dos veces seguidas, entonces veo dos arpones a la vez.
 - [ ] Dado el arpón fijo, cuando llega al techo, entonces se queda clavado unos segundos y revienta lo que lo toque.
 - [ ] Dado el arpón triple, cuando disparo, entonces salen tres líneas separadas.
 - [ ] Dado que recojo un arma, entonces sustituye a la que llevaba.
@@ -49,8 +49,8 @@ Los objetos son iconos pequeños que caen desde donde estalló la burbuja, al to
 - [ ] Dado el reloj activo, cuando un arpón toca una burbuja congelada, entonces se rompe igual que siempre.
 
 **HU-4 — Con dos jugadores.**
-- [ ] Dado el modo 2 jugadores (local u online), cuando uno recoge un arma, entonces solo cambia la suya.
-- [ ] Dado el modo online, entonces los dos vemos los mismos objetos y quién los recoge.
+- [x] Dado el modo 2 jugadores (local u online), cuando uno recoge un arma, entonces solo cambia la suya.
+- [x] Dado el modo online, entonces los dos vemos los mismos objetos y quién los recoge.
 
 ## 6. Requisitos no funcionales
 - R1: sigue a 60 FPS con 3 arpones por jugador y varios objetos en pantalla.

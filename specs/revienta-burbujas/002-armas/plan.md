@@ -54,7 +54,7 @@
  *  @property {number} enSuelo       segundos desde que tocó el suelo (desaparece a los 10)
  */
 ```
-- **Nombres:** en T001 se conservan los del código que ya existía (`balls`, `ps`, `shot`, `pop`, `lvl`…); los campos nuevos (`arma`, `arpones`, `objetos`…) se añaden con los nombres de arriba.
+- **Nombres:** desde T011 el arpón es `arpones` (lista) en lugar de `shot`. En T001 se conservan los del código que ya existía (`balls`, `ps`, `shot`, `pop`, `lvl`…); los campos nuevos (`arma`, `arpones`, `objetos`…) se añaden con los nombres de arriba.
 - **Funciones de `sim.js`:** `crear(n, semilla)`, `paso(estado, entradas)` (avanza 1/60 s), `moverBurbujas(lista, dt)` (también la usa la predicción del invitado), `codificar(estado)`, `decodificar(datos)`.
 - **Entradas por jugador:** `{ left, right, a }`. Para el invitado online, el anfitrión añade `x` (su última posición conocida, ya adelantada) y `sim.js` acerca el jugador a ella suavemente, como hoy.
 - **Aleatoriedad:** generador con semilla guardado en el estado (nunca `Math.random()` dentro de `sim.js`), así las pruebas son repetibles.

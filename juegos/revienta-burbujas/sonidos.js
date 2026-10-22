@@ -63,6 +63,10 @@ export const RECETAS = {
   aviso(s) {
     s.tono({ tipo: 'square', de: 1760, dur: 0.05, vol: 0.12 });
   },
+  rompe(s) {
+    s.ruido({ dur: 0.18, de: 2500, a: 150, vol: 0.55 });
+    s.tono({ tipo: 'square', de: 220, a: 90, dur: 0.12, vol: 0.2 });
+  },
   fin(s) {
     s.notas([[LA3 * 2, 0.18], [FA3 * 2, 0.18], [RE3 * 2, 0.18], [LA3, 0.45]], { tipo: 'triangle', vol: 0.4 });
   },

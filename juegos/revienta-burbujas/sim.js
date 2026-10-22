@@ -33,6 +33,11 @@ const VIDAS_EXTRA = [20000, 50000];             // y después cada 50.000
 const VIDAS_CADA = 50000, MAX_VIDAS = 9;
 const PUNTOS_FRUTA = 500;
 
+// Escenario (spec 004, bloque B)
+export const VEL_HEX = 95;                       // px/s en cada eje de las burbujas hexagonales
+const PUNTOS_BLOQUE = 50;                        // por romper un bloque
+export const MAX_BLOQUES = 12;
+
 // Objetos (spec 002 y 004). Añadir al final: el índice viaja por la red.
 export const TIPOS = ['doble', 'fijo', 'triple', 'velocidad', 'escudo', 'dinamita', 'reloj', 'fruta', 'vida'];
 const PESOS = [25, 20, 20, 15, 12, 4, 4, 15, 1]; // probabilidad relativa de cada tipo
@@ -48,7 +53,7 @@ const PUNTOS_OBJETO = 100;
 // Eventos (spec 003): lo que ha pasado en el tick, para que la página lo convierta en sonido.
 // Cada evento es [código, dato]: dato = jugador (disparo, clavado, escudo, muerte),
 // tamaño (estallido) o tipo de objeto (objeto); 0 en el resto.
-export const EVENTOS = ['listo', 'disparo', 'clavado', 'estallido', 'aparece', 'objeto', 'dinamita', 'reloj', 'escudo', 'muerte', 'limpio', 'fin', 'combo', 'vida', 'tiempo', 'aviso'];
+export const EVENTOS = ['listo', 'disparo', 'clavado', 'estallido', 'aparece', 'objeto', 'dinamita', 'reloj', 'escudo', 'muerte', 'limpio', 'fin', 'combo', 'vida', 'tiempo', 'aviso', 'rompe'];
 const MAX_EVENTOS = 64; // por si nadie los recoge (p. ej. en las pruebas)
 function ev(st, nombre, dato = 0) {
   if (st.eventos.length >= MAX_EVENTOS) st.eventos.splice(0, 2);
@@ -82,6 +87,8 @@ function ev(st, nombre, dato = 0) {
  *  @property {{ s: number, n: number, t: number }} combo  tamaño, cuántas seguidas y s desde la última
  *  @property {number} proximaVida  puntos a los que se gana la siguiente vida
  *  @property {Texto[]} textos    textos flotantes: { x, y, k, v, t }; k: 0 «xN», 1 «+N», 2 «1UP»
+ *  @property {Bloque[]} bloques  { x, y, w, h, duro }: las burbujas rebotan y los arpones se paran
+ *  Burbuja: además `hex` (sin gravedad, en diagonal) y `obj` (siempre suelta un objeto)
  *  @property {Burbuja[]} balls
  *  @property {Jugador[]} ps
  *  @property {Estallido[]} pop
@@ -120,19 +127,25 @@ export function soltarObjeto(st, x, y, tipo) {
 }
 
 // Al reventar una burbuja: a veces cae un objeto. En modo de prueba, siempre y por turnos.
-function quizaSoltar(st, x, y) {
+function quizaSoltar(st, x, y, seguro = false) {
+  if (seguro) { soltarObjeto(st, x, y, st.prueba ? st.prueba[st.pruebaI++ % st.prueba.length] : undefined); ev(st, 'aparece'); return; }
   if (st.objetos.length >= MAX_OBJETOS) return;
   if (st.prueba && st.prueba.length) { soltarObjeto(st, x, y, st.prueba[st.pruebaI++ % st.prueba.length]); ev(st, 'aparece'); return; }
   if (azar(st) < PROB_OBJETO) { soltarObjeto(st, x, y); ev(st, 'aparece'); }
 }
 
 /** Caída de los objetos y tiempo en el suelo. También lo usa la predicción del invitado. */
-export function moverObjetos(list, dt) {
-  const suelo = FLOOR - TAM_OBJETO / 2;
+export function moverObjetos(list, dt, bloques = []) {
+  const m = TAM_OBJETO / 2, suelo = FLOOR - m;
   for (const o of list) {
     if (o.enSuelo >= 0) { o.enSuelo += dt; continue; }
+    const antes = o.y;
     o.vy += G_OBJETO * dt; o.y += o.vy * dt;
-    if (o.y >= suelo) { o.y = suelo; o.vy = 0; o.enSuelo = 0; }
+    if (o.y >= suelo) { o.y = suelo; o.vy = 0; o.enSuelo = 0; continue; }
+    // se posa encima de un bloque al caer sobre él
+    if (o.vy > 0) for (const k of bloques) {
+      if (o.x >= k.x && o.x <= k.x + k.w && antes + m <= k.y && o.y + m > k.y) { o.y = k.y - m; o.vy = 0; o.enSuelo = 0; break; }
+    }
   }
 }
 
@@ -168,15 +181,55 @@ export function moverArpones(p, dt) {
   return clavo;
 }
 
+/**
+ * Arpones contra bloques: el arpón se para en la cara de abajo del bloque. El rompible se
+ * rompe (si hay `romper`; el invitado no rompe, solo quita su arpón) y el fijo se clava
+ * debajo del duro. También lo usa el invitado. @returns {boolean} si algún arpón se clavó
+ */
+export function arponesYBloques(p, bloques, romper) {
+  let clavo = false;
+  const base = FLOOR - p.h;
+  for (let k = p.arpones.length - 1; k >= 0; k--) {
+    const a = p.arpones[k];
+    if (a.clavado > 0) continue;
+    for (let i = 0; i < bloques.length; i++) {
+      const b = bloques[i], abajo = b.y + b.h;
+      if (a.x < b.x || a.x > b.x + b.w || a.top > abajo || base <= abajo) continue;
+      if (!b.duro) { if (romper) romper(i); p.arpones.splice(k, 1); }
+      else if (a.fijo) { a.top = abajo; a.clavado = FIJO_SEG; clavo = true; }
+      else p.arpones.splice(k, 1);
+      break;
+    }
+  }
+  return clavo;
+}
+
 /* ---------- burbujas ---------- */
 
 function bounceV(s) { return -Math.sqrt(2 * G * BOUNCE[s]); }
-function newBall(s, x, y, dir) { return { s, x, y, vx: dir * 70, vy: bounceV(s) * 0.6 }; }
+function newBall(s, x, y, dir, hex = false) {
+  return hex ? { s, x, y, vx: dir * VEL_HEX, vy: -VEL_HEX, hex: true } : { s, x, y, vx: dir * 70, vy: bounceV(s) * 0.6 };
+}
 
+// Nivel generado (hasta que lleguen las fases diseñadas del bloque C): desde el nivel 2 hay
+// bloques, a veces una burbuja de objeto, y desde el 3 algunas hexagonales.
 function level(st) {
   const n = st.lvl, b = [];
   const cnt = Math.min(1 + Math.floor((n - 1) / 2), 4) + (st.n - 1), size = Math.min(2 + n, 4);
-  for (let i = 0; i < cnt; i++) b.push(newBall(size, (W / (cnt + 1)) * (i + 1), 140, i % 2 ? -1 : 1));
+  for (let i = 0; i < cnt; i++) {
+    const c = newBall(size, (W / (cnt + 1)) * (i + 1), 140, i % 2 ? -1 : 1, n >= 3 && azar(st) < 0.3);
+    b.push(c);
+  }
+  if (n >= 2 && azar(st) < 0.4) b[Math.floor(azar(st) * b.length)].obj = true;
+  st.bloques = [];
+  if (n >= 2) {
+    const total = Math.min(1 + Math.floor(n / 2), 4);
+    for (let t = 0; t < 30 && st.bloques.length < total; t++) {
+      const w = 50 + Math.floor(azar(st) * 5) * 10, h = 14;
+      const k = { x: 20 + Math.floor(azar(st) * (W - 40 - w)), y: 200 + Math.floor(azar(st) * 9) * 20, w, h, duro: azar(st) < 0.4 };
+      if (st.bloques.every((o) => k.x + k.w + 16 < o.x || o.x + o.w + 16 < k.x || k.y + k.h + 30 < o.y || o.y + o.h + 30 < k.y)) st.bloques.push(k);
+    }
+  }
   return b;
 }
 
@@ -187,16 +240,38 @@ function hitSeg(b, sx, top) {
 }
 
 /** Mueve burbujas con gravedad y rebotes. También lo usa la predicción del invitado. */
-export function moverBurbujas(list, dt) {
-  for (const b of list) moverBurbuja(b, dt);
+export function moverBurbujas(list, dt, bloques = []) {
+  for (const b of list) moverBurbuja(b, dt, bloques);
 }
-function moverBurbuja(b, dt) {
-  b.vy += G * dt; b.x += b.vx * dt; b.y += b.vy * dt;
+function moverBurbuja(b, dt, bloques) {
+  if (!b.hex) b.vy += G * dt; // las hexagonales van a velocidad constante
+  b.x += b.vx * dt; b.y += b.vy * dt;
   const r = R[b.s];
-  if (b.y + r > FLOOR) { b.y = FLOOR - r; b.vy = bounceV(b.s); }
+  if (b.y + r > FLOOR) { b.y = FLOOR - r; b.vy = b.hex ? -Math.abs(b.vy) : bounceV(b.s); }
   if (b.y - r < 0) { b.y = r; b.vy = Math.abs(b.vy); }
   if (b.x - r < 0) { b.x = r; b.vx = Math.abs(b.vx); }
   if (b.x + r > W) { b.x = W - r; b.vx = -Math.abs(b.vx); }
+  for (const k of bloques) chocarBloque(b, k);
+}
+
+// Círculo contra rectángulo: si se tocan, saca la burbuja por el lado más cercano y la rebota
+function chocarBloque(b, k) {
+  const r = R[b.s];
+  const cx = Math.max(k.x, Math.min(k.x + k.w, b.x)), cy = Math.max(k.y, Math.min(k.y + k.h, b.y));
+  let dx = b.x - cx, dy = b.y - cy;
+  const d2 = dx * dx + dy * dy;
+  if (d2 >= r * r) return;
+  if (d2 === 0) {
+    // el centro está dentro del bloque: sale por el lado con menos solape
+    const l = b.x - k.x, rr = k.x + k.w - b.x, t = b.y - k.y, bo = k.y + k.h - b.y, m = Math.min(l, rr, t, bo);
+    if (m === t) { b.y = k.y - r; b.vy = -Math.abs(b.vy); } else if (m === bo) { b.y = k.y + k.h + r; b.vy = Math.abs(b.vy); }
+    else if (m === l) { b.x = k.x - r; b.vx = -Math.abs(b.vx); } else { b.x = k.x + k.w + r; b.vx = Math.abs(b.vx); }
+    return;
+  }
+  const d = Math.sqrt(d2), nx = dx / d, ny = dy / d;
+  b.x = cx + nx * r; b.y = cy + ny * r;
+  if (Math.abs(ny) >= Math.abs(nx)) b.vy = ny < 0 ? -Math.abs(b.vy) : Math.abs(b.vy);
+  else b.vx = nx < 0 ? -Math.abs(b.vx) : Math.abs(b.vx);
 }
 
 // Dinamita: cada burbuja se parte hasta el tamaño más pequeño (sin pasar de 40 en pantalla)
@@ -210,8 +285,8 @@ function dinamita(st) {
     st.pop.push({ x: b.x, y: b.y, s: b.s, t: 0.3 });
     for (let j = 0; j < n; j++) {
       const d = j % 2 ? 1 : -1, off = (j - (n - 1) / 2) * R[1] * 2.2;
-      const c = newBall(1, Math.max(R[1], Math.min(W - R[1], b.x + off)), b.y, d);
-      c.vy = -200;
+      const c = newBall(1, Math.max(R[1], Math.min(W - R[1], b.x + off)), b.y, d, b.hex);
+      if (!c.hex) c.vy = -200;
       nuevas.push(c);
     }
   }
@@ -261,12 +336,13 @@ function reset(st) {
 /**
  * Partida nueva para 1 o 2 jugadores.
  * @param {number} [semilla] para pruebas repetibles
- * @param {{ prueba?: string[] }} [opciones]  prueba: tipos de objeto que caerán siempre, por turnos
+ * @param {{ prueba?: string[], nivel?: number }} [opciones]  prueba: tipos de objeto que caerán siempre,
+ *   por turnos; nivel: en qué nivel empezar (para probar)
  * @returns {Estado}
  */
 export function crear(n, semilla = (Date.now() ^ (performance.now() * 1000)) | 0, opciones = {}) {
   const prueba = (opciones.prueba || []).map((t) => TIPOS.indexOf(t)).filter((t) => t >= 0);
-  const st = { n, score: 0, lives: n === 2 ? 5 : 3, lvl: 1, ronda: 0, semilla, prueba: prueba.length ? prueba : null, pruebaI: 0, eventos: [], bono: 0, proximaVida: VIDAS_EXTRA[0] };
+  const st = { n, score: 0, lives: n === 2 ? 5 : 3, lvl: Math.max(1, opciones.nivel | 0 || 1), ronda: 0, semilla, prueba: prueba.length ? prueba : null, pruebaI: 0, eventos: [], bono: 0, proximaVida: VIDAS_EXTRA[0] };
   reset(st);
   return st;
 }
@@ -292,6 +368,7 @@ export function paso(st, entradas, dt) {
     p.x = Math.max(p.w / 2, Math.min(W - p.w / 2, p.x));
     if (k.a && disparar(p)) ev(st, 'disparo', i);
     if (moverArpones(p, dt)) ev(st, 'clavado', i);
+    if (arponesYBloques(p, st.bloques, (j) => romperBloque(st, j))) ev(st, 'clavado', i);
   });
 
   // Tiempo del nivel: avisa los últimos segundos y, a 0, se pierde una vida
@@ -312,7 +389,7 @@ export function paso(st, entradas, dt) {
 
   const nb = [];
   outer: for (const b of st.balls) {
-    if (!quietas) moverBurbuja(b, dt);
+    if (!quietas) moverBurbuja(b, dt, st.bloques);
     const r = R[b.s];
     for (const p of st.ps) {
       const k = p.arpones.findIndex((a) => hitSeg(b, a.x, a.top));
@@ -326,10 +403,10 @@ export function paso(st, entradas, dt) {
         sumarPuntos(st, PUNTOS[b.s] * c.n, b.x, b.y);
         st.pop.push({ x: b.x, y: b.y, s: b.s, t: 0.3 });
         ev(st, 'estallido', b.s);
-        quizaSoltar(st, b.x, b.y);
+        quizaSoltar(st, b.x, b.y, !!b.obj);
         if (b.s > 1) for (const d of [-1, 1]) {
-          const n = newBall(b.s - 1, b.x + d * (quietas ? R[b.s - 1] : 4), b.y, d); // congeladas: separadas para verse
-          n.vy = -Math.min(420, Math.sqrt(2 * G * BOUNCE[b.s - 1]) * 0.8);
+          const n = newBall(b.s - 1, b.x + d * (quietas ? R[b.s - 1] : 4), b.y, d, b.hex); // congeladas: separadas para verse
+          if (!n.hex) n.vy = -Math.min(420, Math.sqrt(2 * G * BOUNCE[b.s - 1]) * 0.8);
           nb.push(n);
         }
         continue outer;
@@ -361,8 +438,15 @@ export function paso(st, entradas, dt) {
 }
 
 /** Objetos: caen, se recogen al tocarlos y desaparecen tras 10 s en el suelo. */
+function romperBloque(st, i) {
+  const k = st.bloques[i];
+  st.bloques.splice(i, 1);
+  sumarPuntos(st, PUNTOS_BLOQUE, k.x + k.w / 2, k.y);
+  ev(st, 'rompe');
+}
+
 function pasoObjetos(st, dt) {
-  moverObjetos(st.objetos, dt);
+  moverObjetos(st.objetos, dt, st.bloques);
   const m = TAM_OBJETO / 2;
   for (let k = st.objetos.length - 1; k >= 0; k--) {
     const o = st.objetos[k];
@@ -412,7 +496,8 @@ const NUM_JUGADOR = 13; // números por jugador en la instantánea
 /** Instantánea compacta para enviar al invitado: números redondeados y arrays planos. */
 export function codificar(st) {
   const b = [];
-  for (const o of st.balls) b.push(o.s, Math.round(o.x), Math.round(o.y), Math.round(o.vx), Math.round(o.vy));
+  // tamaño + 8 si es hexagonal + 16 si suelta objeto
+  for (const o of st.balls) b.push(o.s + (o.hex ? 8 : 0) + (o.obj ? 16 : 0), Math.round(o.x), Math.round(o.y), Math.round(o.vx), Math.round(o.vy));
   // por jugador: x, dirección, arma, marcas (1 escudo, 2 invulnerable, 4 rápido)
   // y 3 arpones (x, top, k; k = 0 normal, 1 + décimas clavado si es fijo; -1 si no hay)
   const p = [];
@@ -432,8 +517,14 @@ export function codificar(st) {
   for (const j of st.textos) x.push(Math.round(j.x), Math.round(j.y), j.k, j.v, Math.round(j.t * 10));
   return {
     m: ESTADOS.indexOf(st.state), t: Math.round(st.t * 10), v: st.lvl, sc: st.score, li: st.lives, h: st.hit, c: Math.round(st.congelado * 10),
-    ti: Math.round(st.tiempo * 10), bo: st.bono, b, p, q, o, x,
+    ti: Math.round(st.tiempo * 10), bo: st.bono, b, p, q, o, x, k: bloquesPlanos(st.bloques),
   };
+}
+
+function bloquesPlanos(list) {
+  const k = [];
+  for (const j of list) k.push(Math.round(j.x), Math.round(j.y), Math.round(j.w), Math.round(j.h), j.duro ? 1 : 0);
+  return k;
 }
 
 /** Lo contrario de `codificar`, validando todo (los mensajes llegan de la red). @returns {Estado|null} */
@@ -442,15 +533,24 @@ export function decodificar(d) {
   const s = {
     n: 2, state: ESTADOS[d.m] || 'play', t: (+d.t || 0) / 10, lvl: +d.v || 1, score: +d.sc || 0, lives: +d.li || 0, hit: +d.h,
     congelado: Math.max(0, Math.min(RELOJ_SEG, (+d.c || 0) / 10)), ronda: 0, balls: [], ps: [], pop: [], objetos: [],
-    tiempo: Math.max(0, Math.min(TIEMPO_MAX, (+d.ti || 0) / 10)), bono: Math.max(0, +d.bo || 0), textos: [],
+    tiempo: Math.max(0, Math.min(TIEMPO_MAX, (+d.ti || 0) / 10)), bono: Math.max(0, +d.bo || 0), textos: [], bloques: [],
   };
+  if (Array.isArray(d.k)) for (let i = 0; i + 4 < d.k.length && s.bloques.length < MAX_BLOQUES; i += 5) {
+    const w = +d.k[i + 2], h = +d.k[i + 3];
+    if (w > 0 && h > 0 && w <= W && h <= H) s.bloques.push({ x: +d.k[i] || 0, y: +d.k[i + 1] || 0, w, h, duro: d.k[i + 4] === 1 });
+  }
   if (Array.isArray(d.x)) for (let i = 0; i + 4 < d.x.length && s.textos.length < 8; i += 5) {
     const k = d.x[i + 2] | 0;
     if (k >= 0 && k <= 2) s.textos.push({ x: +d.x[i] || 0, y: +d.x[i + 1] || 0, k, v: Math.max(0, Math.min(99999, d.x[i + 3] | 0)), t: Math.max(0, Math.min(1, (+d.x[i + 4] || 0) / 10)) });
   }
   for (let i = 0; i + 4 < d.b.length && s.balls.length < 80; i += 5) {
-    const sz = d.b[i] | 0;
-    if (sz >= 1 && sz <= 4) s.balls.push({ s: sz, x: +d.b[i + 1], y: +d.b[i + 2], vx: +d.b[i + 3] || 0, vy: +d.b[i + 4] || 0 });
+    const v = d.b[i] | 0, sz = v & 7;
+    if (sz >= 1 && sz <= 4) {
+      const c = { s: sz, x: +d.b[i + 1], y: +d.b[i + 2], vx: +d.b[i + 3] || 0, vy: +d.b[i + 4] || 0 };
+      if (v & 8) c.hex = true;
+      if (v & 16) c.obj = true;
+      s.balls.push(c);
+    }
   }
   for (let i = 0; i + NUM_JUGADOR - 1 < d.p.length && s.ps.length < 2; i += NUM_JUGADOR) {
     const arma = d.p[i + 2] | 0, marcas = d.p[i + 3] | 0, arpones = [];

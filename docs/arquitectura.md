@@ -71,7 +71,7 @@ Opciones según el registro: **1 jugador**, **2 jugadores** (mismo dispositivo),
 
 **Módulo:** todo lo genérico vive en `src/net/sala.js` (API en el plan de 000, §4). Los juegos lo cargan con `import('../../src/net/sala.js')`; la sala carga MQTT.js sola.
 
-**Temas MQTT:** `<id-juego>/v<versión-protocolo>/<CÓDIGO>/in` (invitado → anfitrión) y `/st` (anfitrión → invitado). Revienta Burbujas usa la versión 7 (mejoras arcade, spec 004).
+**Temas MQTT:** `<id-juego>/v<versión-protocolo>/<CÓDIGO>/in` (invitado → anfitrión) y `/st` (anfitrión → invitado). Revienta Burbujas usa la versión 8 (mejoras arcade, spec 004).
 
 **Mensajes**
 - Invitado → anfitrión: `{n, l, r, f, ...}` — secuencia + estado de los botones. Se envía al cambiar algo y, además, cada 50 ms si se mueve o cada 500 ms si está quieto.

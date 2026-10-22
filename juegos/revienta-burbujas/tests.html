@@ -21,7 +21,7 @@
 <p><a href="./">◀ Volver al juego</a></p>
 <script type="module">
 // Pruebas sin frameworks (constitución Q3): cada una monta un estado, avanza y comprueba.
-import { W, FLOOR, R, crear, paso, codificar, decodificar, soltarObjeto, TIPOS, ARMAS, AVISO_TIEMPO, COMBO_SEG, MAX_OBJETOS, OBJ_EN_SUELO, ESPERA_DISPARO, FIJO_SEG, SEP_TRIPLE, RAPIDO_SEG, RELOJ_SEG, EVENTOS } from './sim.js';
+import { W, FLOOR, R, crear, paso, codificar, decodificar, soltarObjeto, TIPOS, ARMAS, AVISO_TIEMPO, COMBO_SEG, VEL_HEX, moverBurbujas, MAX_OBJETOS, OBJ_EN_SUELO, ESPERA_DISPARO, FIJO_SEG, SEP_TRIPLE, RAPIDO_SEG, RELOJ_SEG, EVENTOS } from './sim.js';
 
 const pruebas = [];
 const prueba = (nombre, fn) => pruebas.push({ nombre, fn });
@@ -486,6 +486,93 @@ prueba('La instantánea lleva el tiempo y los textos flotantes', () => {
   coger(st, 'fruta');
   const d = decodificar(JSON.parse(JSON.stringify(codificar(st))));
   cierto(Math.abs(d.tiempo - st.tiempo) < 0.1, 'tiempo'); igual(d.textos.length, st.textos.length, 'textos'); igual(d.textos[0].v, 500, 'valor');
+});
+
+// ---------- Bloque B de la spec 004 ----------
+const bloque = (x, y, w, h, duro = false) => ({ x, y, w, h, duro });
+
+prueba('Nivel 1 sin bloques; desde el 2 hay bloques que no se pisan y quedan por encima de los jugadores', () => {
+  igual(crear(1, 1).bloques.length, 0, 'nivel 1');
+  for (let sem = 1; sem <= 20; sem++) {
+    const st = crear(2, sem, { nivel: 6 });
+    cierto(st.bloques.length > 0, 'hay bloques');
+    for (const k of st.bloques) cierto(k.y + k.h < FLOOR - 80 && k.x >= 0 && k.x + k.w <= W, 'dentro y alto');
+    st.bloques.forEach((a, i) => st.bloques.forEach((c, j) => { if (i < j) cierto(a.x + a.w < c.x || c.x + c.w < a.x || a.y + a.h < c.y || c.y + c.h < a.y, 'no se pisan'); }));
+  }
+});
+
+prueba('Una burbuja que cae sobre un bloque rebota hacia arriba y no lo atraviesa', () => {
+  const lista = [{ s: 2, x: 200, y: 250, vx: 0, vy: 200 }], k = bloque(150, 300, 100, 14);
+  for (let t = 0; t < 1; t += DT) {
+    moverBurbujas(lista, DT, [k]);
+    const b = lista[0];
+    cierto(!(b.x > k.x && b.x < k.x + k.w && b.y + R[2] > k.y + 2 && b.y < k.y + k.h), 'no atraviesa');
+  }
+  cierto(lista[0].y < 300, 'sigue por encima');
+});
+
+prueba('Una burbuja que llega por un lado rebota hacia atrás', () => {
+  const lista = [{ s: 1, x: 120, y: 307, vx: 200, vy: 0, hex: true }];
+  for (let t = 0; t < 0.2; t += DT) moverBurbujas(lista, DT, [bloque(150, 300, 60, 14)]);
+  cierto(lista[0].vx < 0, 'cambia de sentido'); cierto(lista[0].x + R[1] <= 150.5, 'fuera del bloque');
+});
+
+prueba('Hexagonal: sin gravedad, velocidad constante, y se parte en hexagonales', () => {
+  const st = jugando(1);
+  st.balls = [{ s: 2, x: 100, y: 200, vx: VEL_HEX, vy: -VEL_HEX, hex: true }, { s: 1, x: 5, y: 20, vx: 0, vy: 0 }];
+  avanzar(st, 1, [{ left: false, right: false, a: false, x: 350 }]);
+  const b = st.balls[0];
+  igual(Math.abs(b.vx), VEL_HEX, 'vx constante'); igual(Math.abs(b.vy), VEL_HEX, 'vy constante');
+  // una justo encima del jugador, para acertarle
+  st.ps[0].arpones.length = 0;
+  st.balls = [{ s: 2, x: st.ps[0].x, y: 430, vx: VEL_HEX, vy: -VEL_HEX, hex: true }, { s: 1, x: 5, y: 20, vx: 0, vy: 0 }];
+  paso(st, [disparo], DT); avanzar(st, 0.3, [{ left: false, right: false, a: false, x: st.ps[0].x }]);
+  const hijas = st.balls.filter((c) => c.s === 1 && c.x > 10);
+  igual(hijas.length, 2, 'dos trozos'); cierto(hijas.every((c) => c.hex), 'también hexagonales');
+});
+
+prueba('Burbuja de objeto: siempre suelta uno, aunque ya haya 2 en pantalla', () => {
+  const st = jugando(1);
+  soltarObjeto(st, 40, 100); soltarObjeto(st, 360, 100);
+  st.balls = [{ s: 1, x: st.ps[0].x, y: 300, vx: 0, vy: 0, obj: true }, { s: 1, x: 5, y: 20, vx: 0, vy: 0 }];
+  paso(st, [disparo], DT); avanzar(st, 0.5);
+  igual(st.objetos.length, 3, 'tres objetos');
+});
+
+prueba('Arpón contra bloque duro: se para; el fijo se clava debajo', () => {
+  const st = jugando(1); soloLejos(st);
+  st.bloques = [bloque(st.ps[0].x - 30, 250, 60, 14, true)];
+  paso(st, [disparo], DT); avanzar(st, 0.6);
+  igual(st.ps[0].arpones.length, 0, 'normal: desaparece'); igual(st.bloques.length, 1, 'el duro sigue');
+  st.ps[0].arma = ARMAS.indexOf('fijo');
+  paso(st, [disparo], DT); avanzar(st, 0.6);
+  const a = st.ps[0].arpones[0];
+  cierto(a && a.clavado > 0 && a.top === 264, 'fijo clavado bajo el bloque');
+});
+
+prueba('Arpón contra bloque rompible: lo rompe (+50) y desaparece', () => {
+  const st = jugando(1); soloLejos(st); nombres(st);
+  st.bloques = [bloque(st.ps[0].x - 30, 250, 60, 14)];
+  paso(st, [disparo], DT); avanzar(st, 0.6);
+  igual(st.bloques.length, 0, 'roto'); igual(st.ps[0].arpones.length, 0, 'arpón gastado'); igual(st.score, 50, 'puntos');
+  cierto(nombres(st).includes('rompe:0'), 'suena');
+});
+
+prueba('Los objetos se posan encima de los bloques', () => {
+  const st = jugando(1); soloLejos(st);
+  st.bloques = [bloque(40, 300, 80, 14, true)];
+  soltarObjeto(st, 80, 200, 'fruta');
+  avanzar(st, 1.5, [{ left: false, right: false, a: false, x: 350 }]);
+  igual(st.objetos[0].y, 300 - 8, 'encima del bloque'); cierto(st.objetos[0].enSuelo > 0, 'quieto');
+});
+
+prueba('La instantánea lleva los bloques y las marcas de las burbujas', () => {
+  const st = jugando(2);
+  st.bloques = [bloque(40, 300, 80, 14, true), bloque(200, 260, 60, 14)];
+  st.balls = [{ s: 3, x: 100, y: 100, vx: VEL_HEX, vy: -VEL_HEX, hex: true, obj: true }];
+  const d = decodificar(JSON.parse(JSON.stringify(codificar(st))));
+  igual(d.bloques.length, 2, 'bloques'); igual(d.bloques[0].duro, true, 'duro'); igual(d.bloques[1].duro, false, 'rompible');
+  igual(d.balls[0].s, 3, 'tamaño'); cierto(d.balls[0].hex && d.balls[0].obj, 'hexagonal y de objeto');
 });
 
 prueba('codificar y decodificar dan el mismo estado (redondeado)', () => {

@@ -83,7 +83,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 <script type="module">
 // Página de Revienta Burbujas: menús, controles, red y bucle. Las reglas están en sim.js
 // y el dibujo en render.js (constitución A1).
-import { W, VEL_JUGADOR, crear, paso, moverBurbujas, moverObjetos, moverTextos, disparar, moverArpones, codificar, decodificar, TIPOS, EVENTOS } from './sim.js';
+import { W, VEL_JUGADOR, crear, paso, moverBurbujas, moverObjetos, moverTextos, arponesYBloques, disparar, moverArpones, codificar, decodificar, TIPOS, EVENTOS } from './sim.js';
 import { dibujar } from './render.js';
 import { crearAudio } from '../../src/audio/sintetizador.js';
 import { RECETAS } from './sonidos.js';
@@ -157,7 +157,9 @@ const ent=[{left:false,right:false,a:false,x:undefined},{left:false,right:false,
 // de esos tipos y por turnos. Solo lo usa quien simula (1-2 jugadores en el móvil o anfitrión).
 const PRUEBA=(()=>{const q=new URLSearchParams(location.search).get('objetos');if(!q)return null;
   const l=q==='todos'?TIPOS.slice():q.split(',').map(t=>t.trim().toLowerCase()).filter(t=>TIPOS.includes(t));return l.length?l:null})();
-function newGame(n){st=crear(n,undefined,{prueba:PRUEBA});pausa=0;for(const k of keys){k.l=k.r=k.f=false}guestX=null;ronda=st.ronda}
+// ?nivel=N: empezar en ese nivel (para probar)
+const NIVEL=Math.max(1,Math.min(99,parseInt(new URLSearchParams(location.search).get('nivel'),10)||1));
+function newGame(n){st=crear(n,undefined,{prueba:PRUEBA,nivel:NIVEL});pausa=0;for(const k of keys){k.l=k.r=k.f=false}guestX=null;ronda=st.ronda}
 function update(dt){
   for(let i=0;i<st.n;i++){
     const k=mode==='host'&&i===1?guestIn:keys[i],e=ent[i];
@@ -194,7 +196,7 @@ async function openSala(c,asHost,onFail){
   const gen=++netGen;
   try{
     const net=await import('../../src/net/sala.js');
-    const s=await net.crearSala({juego:'revienta-burbujas',version:7,codigo:c||net.codigoAleatorio(),escuchar:[asHost?'in':'st'],anfitrion:asHost});
+    const s=await net.crearSala({juego:'revienta-burbujas',version:8,codigo:c||net.codigoAleatorio(),escuchar:[asHost?'in':'st'],anfitrion:asHost});
     if(gen!==netGen){s.cerrar();return null}
     sala=s;s.alRecibir(onMsg);return s;
   }catch(e){if(gen===netGen)onFail(e.message&&e.message.startsWith('No se pudo')?e.message:'Sin conexión: el modo online necesita internet.');return null}
@@ -239,8 +241,8 @@ function guestStep(dt){
       const ahead=Math.min(lat,0.6);
       if(s.state==='play'){
         if(s.congelado>0)s.congelado=Math.max(0,s.congelado-ahead);
-        else for(let t=ahead;t>0;t-=1/60)moverBurbujas(s.balls,Math.min(1/60,t));
-        moverObjetos(s.objetos,ahead);
+        else for(let t=ahead;t>0;t-=1/60)moverBurbujas(s.balls,Math.min(1/60,t),s.bloques);
+        moverObjetos(s.objetos,ahead,s.bloques);
         for(const p of s.ps)moverArpones(p,ahead)}
       const keep=gview&&gview.state==='play'&&s.state==='play'&&gview.ps&&gview.ps.length===2;
       hostTargetX=s.ps[0].x+(s.state==='play'?s.ps[0].dir*VEL_JUGADOR*ahead:0);hostDir=s.ps[0].dir;
@@ -267,9 +269,9 @@ function guestStep(dt){
   if(k.f&&disparar(me)){localShotAt=now;audio.tocar('disparo')}
   hostTargetX=Math.max(13,Math.min(W-13,hostTargetX+hostDir*VEL_JUGADOR*dt));
   v.ps[0].x+=(hostTargetX-v.ps[0].x)*Math.min(1,dt*20);
-  v.ps.forEach((p,i)=>{if(moverArpones(p,dt)&&i===1)audio.tocar('clavado')});
-  if(v.congelado>0)v.congelado=Math.max(0,v.congelado-dt);else moverBurbujas(v.balls,dt);
-  moverObjetos(v.objetos,dt);
+  v.ps.forEach((p,i)=>{if((moverArpones(p,dt)|arponesYBloques(p,v.bloques,null))&&i===1)audio.tocar('clavado')});
+  if(v.congelado>0)v.congelado=Math.max(0,v.congelado-dt);else moverBurbujas(v.balls,dt,v.bloques);
+  moverObjetos(v.objetos,dt,v.bloques);
   v.pop=v.pop.filter(q=>(q.t-=dt)>0);
   moverTextos(v.textos,dt);
   v.tiempo=Math.max(0,v.tiempo-dt);

@@ -5,6 +5,7 @@
 
 - [x] T001 — Bloque A: tiempo por nivel, combos, vida extra, fruta y 1UP *(v0.10.0)*
   - Probar: `?objetos=fruta,vida`; dejar que se acabe el tiempo; reventar seguidas del mismo tamaño
-- [ ] T002 — Bloque B: bloques rompibles y duros, burbujas hexagonales y de objeto
+- [x] T002 — Bloque B: bloques rompibles y duros, burbujas hexagonales y de objeto *(v0.11.0)*
+  - Probar: `?nivel=6` (bloques, hexagonales y burbujas «?»); hasta el bloque C salen en los niveles generados desde el 2
 - [ ] T003 — Bloque C: `fases.js` con 20 fases en 4 mundos, fondos y pantalla de mundo
 - [ ] T004 — Bloque D: continuar y tabla de récords

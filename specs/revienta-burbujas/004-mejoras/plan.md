@@ -23,7 +23,9 @@
 - Bloque: `{ x, y, w, h, duro }`. Las burbujas rebotan en él (círculo contra rectángulo, por el lado más cercano); el arpón se para en su cara inferior (el fijo se clava ahí); el rompible desaparece al tocarlo un arpón.
 - Hexagonal: `hex: true`, velocidad constante en diagonal, rebota en paredes, techo, suelo y bloques sin gravedad.
 - Burbuja de objeto: `obj: true`; al reventar suelta siempre un objeto (aunque haya 2 en pantalla).
-- En la red viaja qué bloques quedan (una máscara de bits) y las marcas `hex`/`obj` de cada burbuja.
+- En la red viajan los bloques que quedan (`k`: x, y, w, h, duro; son pocos) y las marcas `hex`/`obj` dentro del tamaño de cada burbuja (+8, +16).
+- Romper un bloque da 50 puntos. Los objetos se posan encima de los bloques.
+- Hasta el bloque C, los niveles generados ponen bloques desde el 2, una burbuja de objeto a veces y hexagonales desde el 3. `?nivel=N` empieza en ese nivel.
 
 ## 4. Bloque C — fases
 - `fases.js`: lista de `{ mundo, tiempo, burbujas: [{ s, x, y, dir, hex?, obj? }], bloques: [{ x, y, w, h, duro? }] }`.

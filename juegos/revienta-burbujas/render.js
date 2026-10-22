@@ -64,6 +64,31 @@ function dibujarArpon(x, a, top, base, c) {
   x.moveTo(a.x - 6, top + 8); x.lineTo(a.x, top - 2); x.lineTo(a.x + 6, top + 8); x.fill();
 }
 
+// Bloques: el rompible, de ladrillo con juntas; el duro, de metal con remaches
+function dibujarBloque(x, k) {
+  if (k.duro) {
+    x.fillStyle = '#8a8fb0'; x.fillRect(k.x, k.y, k.w, k.h);
+    x.fillStyle = '#c9cde6'; x.fillRect(k.x, k.y, k.w, 2);
+    x.fillStyle = '#4b4f6e'; x.fillRect(k.x, k.y + k.h - 2, k.w, 2);
+    x.fillStyle = '#4b4f6e';
+    for (const rx of [k.x + 4, k.x + k.w - 7]) x.fillRect(rx, k.y + k.h / 2 - 1.5, 3, 3);
+  } else {
+    x.fillStyle = '#d9822b'; x.fillRect(k.x, k.y, k.w, k.h);
+    x.fillStyle = '#f3a65a'; x.fillRect(k.x, k.y, k.w, 2);
+    x.fillStyle = '#8f4a12';
+    x.fillRect(k.x, k.y + k.h / 2 - 0.5, k.w, 1);
+    for (let i = 10; i < k.w; i += 20) x.fillRect(k.x + i, k.y, 1, k.h / 2);
+    for (let i = 0; i < k.w; i += 20) x.fillRect(k.x + i, k.y + k.h / 2, 1, k.h / 2);
+  }
+}
+
+// Hexágono regular de «radio» r centrado en (cx, cy)
+function hexagono(x, cx, cy, r) {
+  x.beginPath();
+  for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + (i * Math.PI) / 3; x.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a)); }
+  x.closePath();
+}
+
 // HUD: arma y potenciadores de cada jugador, en el centro de la franja inferior
 function hudJugadores(x, st) {
   const slots = st.ps.map((p) => {
@@ -128,15 +153,23 @@ export function dibujar(x, st, v) {
     return;
   }
 
+  if (st.bloques) for (const k of st.bloques) dibujarBloque(x, k);
   st.ps.forEach((p, i) => {
     for (const a of p.arpones) dibujarArpon(x, a, L(a.atop, a.top), FLOOR - p.h, PCOL[i].shot);
   });
-  const quietas = st.congelado > 0;
+  const quietas = st.congelado > 0, brillo = 0.5 + 0.5 * Math.sin(v.ahora / 120);
   for (const b of st.balls) {
     const r = R[b.s], bx = L(b.ax, b.x), by = L(b.ay, b.y);
-    x.fillStyle = COL[b.s]; x.beginPath(); x.arc(bx, by, r, 0, 7); x.fill();
+    x.fillStyle = COL[b.s];
+    if (b.hex) { hexagono(x, bx, by, r); x.fill(); x.strokeStyle = 'rgba(13,11,31,.45)'; x.lineWidth = 2; x.stroke(); }
+    else { x.beginPath(); x.arc(bx, by, r, 0, 7); x.fill(); }
     x.fillStyle = 'rgba(255,255,255,.55)'; x.beginPath(); x.arc(bx - r * 0.35, by - r * 0.35, r * 0.25, 0, 7); x.fill();
-    if (quietas) { x.strokeStyle = '#e6f7ff'; x.lineWidth = 2; x.beginPath(); x.arc(bx, by, r, 0, 7); x.stroke(); } // congeladas
+    if (b.obj) { // brilla: suelta un objeto seguro
+      x.strokeStyle = `rgba(255,207,58,${0.4 + 0.6 * brillo})`; x.lineWidth = 3;
+      x.beginPath(); x.arc(bx, by, r + 3, 0, 7); x.stroke();
+      x.fillStyle = '#ffcf3a'; x.font = `${Math.max(7, r * 0.6)}px ${FUENTE}`; x.textAlign = 'center'; x.fillText('?', bx, by + r * 0.25);
+    }
+    if (quietas) { x.strokeStyle = '#e6f7ff'; x.lineWidth = 2; if (b.hex) hexagono(x, bx, by, r); else { x.beginPath(); x.arc(bx, by, r, 0, 7); } x.stroke(); } // congeladas
   }
   for (const q of st.pop) {
     x.strokeStyle = COL[q.s]; x.lineWidth = 2;

@@ -2,7 +2,7 @@
 
 > **ID:** 003-sonido · **Estado:** Implementada (v0.8.0) · **Fecha:** 2026-10-22
 > Aprobada por el usuario al pedir «implementa todos los sonidos». Cierra la pregunta abierta de sonido de la spec 001.
-> El juego de puzzle/tablero previsto pasa a ser la spec 004.
+> El juego de puzzle/tablero previsto pasa a ser la spec 005.
 
 ## 1. Problema
 El juego no tiene sonido: disparar, reventar o recoger un objeto no se «siente».

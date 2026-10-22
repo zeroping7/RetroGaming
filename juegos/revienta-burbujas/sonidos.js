@@ -28,7 +28,8 @@ export const RECETAS = {
   },
   objeto(s, tipo) {
     // los potenciadores que tienen sonido propio (dinamita, reloj) suenan aparte
-    if (TIPOS[tipo] === 'dinamita' || TIPOS[tipo] === 'reloj') return;
+    if (TIPOS[tipo] === 'dinamita' || TIPOS[tipo] === 'reloj' || TIPOS[tipo] === 'vida') return;
+    if (TIPOS[tipo] === 'fruta') { s.tono({ tipo: 'triangle', de: 880, a: 1760, dur: 0.12, vol: 0.3 }); return; }
     s.notas([[DO, 0.05], [MI, 0.05], [SOL, 0.05], [DO2, 0.1]], { vol: 0.22 });
   },
   dinamita(s) {
@@ -47,6 +48,20 @@ export const RECETAS = {
   },
   limpio(s) {
     s.notas([[SOL, 0.08], [DO2, 0.08], [MI * 2, 0.08], [SOL * 2, 0.22]], { vol: 0.22 });
+  },
+  // cada burbuja más del combo suena un poco más aguda
+  combo(s, n = 2) {
+    const f = 600 * Math.pow(1.12, Math.min(n, 8));
+    s.tono({ tipo: 'square', de: f, a: f * 1.5, dur: 0.08, vol: 0.16, en: 0.03 });
+  },
+  vida(s) {
+    s.notas([[MI, 0.07], [SOL, 0.07], [MI * 2, 0.07], [DO2, 0.07], [SOL * 2, 0.2]], { vol: 0.22 });
+  },
+  tiempo(s) {
+    s.notas([[400, 0.12], [300, 0.12], [200, 0.3]], { tipo: 'sawtooth', vol: 0.22 });
+  },
+  aviso(s) {
+    s.tono({ tipo: 'square', de: 1760, dur: 0.05, vol: 0.12 });
   },
   fin(s) {
     s.notas([[LA3 * 2, 0.18], [FA3 * 2, 0.18], [RE3 * 2, 0.18], [LA3, 0.45]], { tipo: 'triangle', vol: 0.4 });

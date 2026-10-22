@@ -24,9 +24,19 @@ export const INVULNERABLE_SEG = 1;              // tras romperse el escudo
 export const RELOJ_SEG = 5;
 const MAX_BURBUJAS = 40;                        // tope al partir con dinamita
 
-// Objetos (spec 002)
-export const TIPOS = ['doble', 'fijo', 'triple', 'velocidad', 'escudo', 'dinamita', 'reloj'];
-const PESOS = [25, 20, 20, 15, 12, 4, 4];       // probabilidad relativa de cada tipo (suman 100)
+// Reglas arcade (spec 004, bloque A)
+export const TIEMPO_BASE = 45, TIEMPO_POR_BURBUJA = 15, TIEMPO_MAX = 100; // s por nivel
+export const AVISO_TIEMPO = 10;                 // s finales en los que avisa
+const BONO_SEGUNDO = 20;                        // puntos por segundo que sobra
+export const COMBO_SEG = 3, COMBO_MAX = 8;      // s máximos entre burbujas del combo, multiplicador máximo
+const VIDAS_EXTRA = [20000, 50000];             // y después cada 50.000
+const VIDAS_CADA = 50000, MAX_VIDAS = 9;
+const PUNTOS_FRUTA = 500;
+
+// Objetos (spec 002 y 004). Añadir al final: el índice viaja por la red.
+export const TIPOS = ['doble', 'fijo', 'triple', 'velocidad', 'escudo', 'dinamita', 'reloj', 'fruta', 'vida'];
+const PESOS = [25, 20, 20, 15, 12, 4, 4, 15, 1]; // probabilidad relativa de cada tipo
+const SUMA_PESOS = PESOS.reduce((a, b) => a + b, 0);
 export const PROB_OBJETO = 1 / 8;               // por burbuja reventada
 export const MAX_OBJETOS = 2;
 export const TAM_OBJETO = 16;                   // px de lado
@@ -38,7 +48,7 @@ const PUNTOS_OBJETO = 100;
 // Eventos (spec 003): lo que ha pasado en el tick, para que la página lo convierta en sonido.
 // Cada evento es [código, dato]: dato = jugador (disparo, clavado, escudo, muerte),
 // tamaño (estallido) o tipo de objeto (objeto); 0 en el resto.
-export const EVENTOS = ['listo', 'disparo', 'clavado', 'estallido', 'aparece', 'objeto', 'dinamita', 'reloj', 'escudo', 'muerte', 'limpio', 'fin'];
+export const EVENTOS = ['listo', 'disparo', 'clavado', 'estallido', 'aparece', 'objeto', 'dinamita', 'reloj', 'escudo', 'muerte', 'limpio', 'fin', 'combo', 'vida', 'tiempo', 'aviso'];
 const MAX_EVENTOS = 64; // por si nadie los recoge (p. ej. en las pruebas)
 function ev(st, nombre, dato = 0) {
   if (st.eventos.length >= MAX_EVENTOS) st.eventos.splice(0, 2);
@@ -67,6 +77,11 @@ function ev(st, nombre, dato = 0) {
  *  @property {number} hit     jugador tocado (-1 ninguno)
  *  @property {number} ronda   sube cada vez que se reinicia el nivel
  *  @property {number} congelado  s de reloj que quedan (0 = nada)
+ *  @property {number} tiempo     s que quedan para limpiar el nivel
+ *  @property {number} bono       puntos del bonus de tiempo del último nivel limpio (para mostrarlo)
+ *  @property {{ s: number, n: number, t: number }} combo  tamaño, cuántas seguidas y s desde la última
+ *  @property {number} proximaVida  puntos a los que se gana la siguiente vida
+ *  @property {Texto[]} textos    textos flotantes: { x, y, k, v, t }; k: 0 «xN», 1 «+N», 2 «1UP»
  *  @property {Burbuja[]} balls
  *  @property {Jugador[]} ps
  *  @property {Estallido[]} pop
@@ -90,7 +105,7 @@ function azar(st) {
 }
 
 function tipoAlAzar(st) {
-  let r = azar(st) * 100;
+  let r = azar(st) * SUMA_PESOS;
   for (let i = 0; i < PESOS.length; i++) { if ((r -= PESOS[i]) < 0) return i; }
   return 0;
 }
@@ -213,8 +228,30 @@ function nuevoJugador(st, i, antes) {
   };
 }
 
+// Texto flotante que sube y se desvanece (combo, vida extra, fruta)
+function texto(st, x, y, k, v) {
+  if (st.textos.length >= 8) st.textos.shift();
+  st.textos.push({ x: Math.max(20, Math.min(W - 20, x)), y, k, v, t: 1 });
+}
+/** Sube y desvanece los textos. También lo usa el invitado. */
+export function moverTextos(list, dt) {
+  for (let i = list.length - 1; i >= 0; i--) { const q = list[i]; q.y -= 30 * dt; q.t -= dt; if (q.t <= 0) list.splice(i, 1); }
+}
+
+function sumarPuntos(st, n, x, y) {
+  st.score += n;
+  while (st.score >= st.proximaVida) {
+    if (st.lives < MAX_VIDAS) { st.lives++; ev(st, 'vida'); texto(st, x, y - 20, 2, 0); }
+    const i = VIDAS_EXTRA.indexOf(st.proximaVida);
+    st.proximaVida = i >= 0 && i + 1 < VIDAS_EXTRA.length ? VIDAS_EXTRA[i + 1] : st.proximaVida + VIDAS_CADA;
+  }
+}
+
+function tiempoNivel(n) { return Math.min(TIEMPO_MAX, TIEMPO_BASE + TIEMPO_POR_BURBUJA * n); }
+
 function reset(st) {
   st.balls = level(st);
+  st.tiempo = tiempoNivel(st.balls.length); st.combo = { s: 0, n: 0, t: 0 }; st.textos = [];
   const antes = st.ps || [];
   st.ps = [];
   for (let i = 0; i < st.n; i++) st.ps.push(nuevoJugador(st, i, antes[i]));
@@ -229,7 +266,7 @@ function reset(st) {
  */
 export function crear(n, semilla = (Date.now() ^ (performance.now() * 1000)) | 0, opciones = {}) {
   const prueba = (opciones.prueba || []).map((t) => TIPOS.indexOf(t)).filter((t) => t >= 0);
-  const st = { n, score: 0, lives: n === 2 ? 5 : 3, lvl: 1, ronda: 0, semilla, prueba: prueba.length ? prueba : null, pruebaI: 0, eventos: [] };
+  const st = { n, score: 0, lives: n === 2 ? 5 : 3, lvl: 1, ronda: 0, semilla, prueba: prueba.length ? prueba : null, pruebaI: 0, eventos: [], bono: 0, proximaVida: VIDAS_EXTRA[0] };
   reset(st);
   return st;
 }
@@ -257,6 +294,18 @@ export function paso(st, entradas, dt) {
     if (moverArpones(p, dt)) ev(st, 'clavado', i);
   });
 
+  // Tiempo del nivel: avisa los últimos segundos y, a 0, se pierde una vida
+  const antes = Math.ceil(st.tiempo);
+  st.tiempo = Math.max(0, st.tiempo - dt);
+  const ahora = Math.ceil(st.tiempo);
+  if (ahora < antes && ahora <= AVISO_TIEMPO && st.tiempo > 0) ev(st, 'aviso');
+  if (st.tiempo <= 0) {
+    st.lives--; st.state = 'dead'; st.t = 1.6; st.hit = -1; ev(st, 'tiempo');
+    st.ps.forEach((q) => { q.arpones.length = 0; });
+    return;
+  }
+  if (st.combo.n) { st.combo.t += dt; if (st.combo.t > COMBO_SEG) st.combo.n = 0; }
+
   // Reloj: las burbujas no se mueven, pero siguen haciendo daño y se pueden romper
   const quietas = st.congelado > 0;
   if (quietas) st.congelado = Math.max(0, st.congelado - dt);
@@ -268,7 +317,13 @@ export function paso(st, entradas, dt) {
     for (const p of st.ps) {
       const k = p.arpones.findIndex((a) => hitSeg(b, a.x, a.top));
       if (k >= 0) {
-        p.arpones.splice(k, 1); st.score += PUNTOS[b.s];
+        p.arpones.splice(k, 1);
+        // combo: seguidas del mismo tamaño multiplican los puntos
+        const c = st.combo;
+        if (c.n && c.s === b.s) c.n = Math.min(COMBO_MAX, c.n + 1); else { c.s = b.s; c.n = 1; }
+        c.t = 0;
+        if (c.n > 1) { texto(st, b.x, b.y, 0, c.n); ev(st, 'combo', c.n); }
+        sumarPuntos(st, PUNTOS[b.s] * c.n, b.x, b.y);
         st.pop.push({ x: b.x, y: b.y, s: b.s, t: 0.3 });
         ev(st, 'estallido', b.s);
         quizaSoltar(st, b.x, b.y);
@@ -296,8 +351,13 @@ export function paso(st, entradas, dt) {
   }
   st.balls = nb;
   st.pop = st.pop.filter((q) => (q.t -= dt) > 0);
+  moverTextos(st.textos, dt);
   pasoObjetos(st, dt);
-  if (!st.balls.length) { st.state = 'clear'; st.t = 1.6; st.score += 500; ev(st, 'limpio'); }
+  if (!st.balls.length) {
+    st.bono = Math.floor(st.tiempo) * BONO_SEGUNDO;
+    st.state = 'clear'; st.t = 2.2; ev(st, 'limpio');
+    sumarPuntos(st, 500 + st.bono, W / 2, 300);
+  }
 }
 
 /** Objetos: caen, se recogen al tocarlos y desaparecen tras 10 s en el suelo. */
@@ -319,7 +379,13 @@ function pasoObjetos(st, dt) {
 /** Efecto de recoger un objeto. Las armas sustituyen a la que se llevaba. */
 function recoger(st, i, o) {
   const p = st.ps[i], tipo = TIPOS[o.tipo];
-  st.score += PUNTOS_OBJETO;
+  if (tipo === 'fruta') { sumarPuntos(st, PUNTOS_FRUTA, o.x, o.y); texto(st, o.x, o.y - 10, 1, PUNTOS_FRUTA); ev(st, 'objeto', o.tipo); return; }
+  if (tipo === 'vida') {
+    if (st.lives < MAX_VIDAS) st.lives++;
+    texto(st, o.x, o.y - 10, 2, 0); ev(st, 'vida'); sumarPuntos(st, PUNTOS_OBJETO, o.x, o.y);
+    return;
+  }
+  sumarPuntos(st, PUNTOS_OBJETO, o.x, o.y);
   st.pop.push({ x: o.x, y: o.y, s: 1, t: 0.3 });
   ev(st, 'objeto', o.tipo);
   const arma = ARMAS.indexOf(tipo);
@@ -362,7 +428,12 @@ export function codificar(st) {
   for (const o of st.pop) q.push(Math.round(o.x), Math.round(o.y), o.s, Math.round(o.t * 100));
   const o = [];
   for (const j of st.objetos) o.push(j.tipo, Math.round(j.x), Math.round(j.y), Math.round(j.vy), Math.round(j.enSuelo * 10));
-  return { m: ESTADOS.indexOf(st.state), t: Math.round(st.t * 10), v: st.lvl, sc: st.score, li: st.lives, h: st.hit, c: Math.round(st.congelado * 10), b, p, q, o };
+  const x = [];
+  for (const j of st.textos) x.push(Math.round(j.x), Math.round(j.y), j.k, j.v, Math.round(j.t * 10));
+  return {
+    m: ESTADOS.indexOf(st.state), t: Math.round(st.t * 10), v: st.lvl, sc: st.score, li: st.lives, h: st.hit, c: Math.round(st.congelado * 10),
+    ti: Math.round(st.tiempo * 10), bo: st.bono, b, p, q, o, x,
+  };
 }
 
 /** Lo contrario de `codificar`, validando todo (los mensajes llegan de la red). @returns {Estado|null} */
@@ -371,7 +442,12 @@ export function decodificar(d) {
   const s = {
     n: 2, state: ESTADOS[d.m] || 'play', t: (+d.t || 0) / 10, lvl: +d.v || 1, score: +d.sc || 0, lives: +d.li || 0, hit: +d.h,
     congelado: Math.max(0, Math.min(RELOJ_SEG, (+d.c || 0) / 10)), ronda: 0, balls: [], ps: [], pop: [], objetos: [],
+    tiempo: Math.max(0, Math.min(TIEMPO_MAX, (+d.ti || 0) / 10)), bono: Math.max(0, +d.bo || 0), textos: [],
   };
+  if (Array.isArray(d.x)) for (let i = 0; i + 4 < d.x.length && s.textos.length < 8; i += 5) {
+    const k = d.x[i + 2] | 0;
+    if (k >= 0 && k <= 2) s.textos.push({ x: +d.x[i] || 0, y: +d.x[i + 1] || 0, k, v: Math.max(0, Math.min(99999, d.x[i + 3] | 0)), t: Math.max(0, Math.min(1, (+d.x[i + 4] || 0) / 10)) });
+  }
   for (let i = 0; i + 4 < d.b.length && s.balls.length < 80; i += 5) {
     const sz = d.b[i] | 0;
     if (sz >= 1 && sz <= 4) s.balls.push({ s: sz, x: +d.b[i + 1], y: +d.b[i + 2], vx: +d.b[i + 3] || 0, vy: +d.b[i + 4] || 0 });

@@ -21,7 +21,7 @@
 <p><a href="./">◀ Volver al juego</a></p>
 <script type="module">
 // Pruebas sin frameworks (constitución Q3): cada una monta un estado, avanza y comprueba.
-import { W, FLOOR, R, crear, paso, codificar, decodificar, soltarObjeto, TIPOS, ARMAS, MAX_OBJETOS, OBJ_EN_SUELO, ESPERA_DISPARO, FIJO_SEG, SEP_TRIPLE, RAPIDO_SEG, RELOJ_SEG, EVENTOS } from './sim.js';
+import { W, FLOOR, R, crear, paso, codificar, decodificar, soltarObjeto, TIPOS, ARMAS, AVISO_TIEMPO, COMBO_SEG, MAX_OBJETOS, OBJ_EN_SUELO, ESPERA_DISPARO, FIJO_SEG, SEP_TRIPLE, RAPIDO_SEG, RELOJ_SEG, EVENTOS } from './sim.js';
 
 const pruebas = [];
 const prueba = (nombre, fn) => pruebas.push({ nombre, fn });
@@ -71,8 +71,8 @@ prueba('La burbuja más pequeña desaparece y, sin burbujas, el nivel se limpia 
   st.balls = [{ s: 1, x: p.x, y: 300, vx: 0, vy: 0 }];
   paso(st, [{ left: false, right: false, a: true }], DT);
   avanzar(st, 0.5);
-  igual(st.state, 'clear', 'fase'); igual(st.score, 600, 'puntos (100 + 500)');
-  avanzar(st, 1.7);
+  igual(st.state, 'clear', 'fase'); igual(st.score, 600 + st.bono, 'puntos (100 + 500 + bonus de tiempo)');
+  avanzar(st, 2.3);
   igual(st.lvl, 2, 'pasa al nivel 2');
 });
 
@@ -132,7 +132,7 @@ prueba('Cada tick guarda la posición anterior para interpolar el dibujo (y no v
 function reventar(st, n) {
   let hechas = 0;
   while (hechas < n) {
-    st.state = 'play';
+    st.state = 'play'; st.tiempo = 1e9;
     st.balls = [{ s: 1, x: st.ps[0].x, y: 300, vx: 0, vy: 0 }, { s: 1, x: 5, y: 20, vx: 0, vy: 0 }];
     st.objetos.length = 0;
     st.ps[0].arpones.length = 0;
@@ -149,7 +149,7 @@ prueba('Cae un objeto aproximadamente en 1 de cada 8 burbujas', () => {
   let objetos = 0;
   const N = 800;
   for (let i = 0; i < N; i++) {
-    st.state = 'play'; st.objetos.length = 0; st.ps[0].arpones.length = 0;
+    st.state = 'play'; st.tiempo = 1e9; st.objetos.length = 0; st.ps[0].arpones.length = 0;
     st.balls = [{ s: 1, x: st.ps[0].x, y: 300, vx: 0, vy: 0 }, { s: 1, x: 5, y: 20, vx: 0, vy: 0 }];
     paso(st, [{ left: false, right: false, a: true }], DT);
     for (let k = 0; k < 40 && st.balls.length === 2; k++) paso(st, quietos(st), DT);
@@ -172,7 +172,7 @@ prueba('Nunca hay más de 2 objetos en pantalla', () => {
   // el tercero lo pone a mano; el juego no debe soltar más mientras haya 2
   st.objetos.length = MAX_OBJETOS;
   for (let i = 0; i < 200; i++) {
-    st.state = 'play'; st.ps[0].arpones.length = 0;
+    st.state = 'play'; st.tiempo = 1e9; st.ps[0].arpones.length = 0;
     st.balls = [{ s: 1, x: st.ps[0].x, y: 300, vx: 0, vy: 0 }, { s: 1, x: 5, y: 20, vx: 0, vy: 0 }];
     paso(st, [{ left: false, right: false, a: true }], DT);
     for (let k = 0; k < 40 && st.balls.length === 2; k++) paso(st, quietos(st), DT);
@@ -243,7 +243,7 @@ prueba('Cada arpón del doble rompe burbujas por su cuenta', () => {
   st.ps[0].x = 100; paso(st, [disparo], DT);
   st.ps[0].x = 300; avanzar(st, ESPERA_DISPARO + DT, [{ left: false, right: false, a: true, x: 300 }]);
   avanzar(st, 0.8, [{ left: false, right: false, a: false, x: 300 }]);
-  igual(st.balls.length, 1, 'quedan solo la lejana'); igual(st.score, 200, 'puntos de dos pequeñas');
+  igual(st.balls.length, 1, 'quedan solo la lejana'); igual(st.score, 300, 'dos pequeñas seguidas: 100 + 100 x2 de combo');
 });
 
 prueba('Al morir se pierde el arma; al pasar de nivel se conserva', () => {
@@ -253,7 +253,7 @@ prueba('Al morir se pierde el arma; al pasar de nivel se conserva', () => {
   avanzar(st, 1.4);
   igual(st.ps[0].arma, 0, 'el tocado vuelve al normal'); igual(st.ps[1].arma, 1, 'el otro la conserva');
   st.state = 'play'; st.balls = [];
-  avanzar(st, 1.8);
+  avanzar(st, 2.4);
   igual(st.lvl, 2, 'pasa de nivel'); igual(st.ps[1].arma, 1, 'sigue con el doble');
 });
 
@@ -360,7 +360,7 @@ prueba('Modo de prueba: cae siempre un objeto, de los tipos pedidos y por turnos
   avanzar(st, 1.5);
   const tipos = [];
   for (let i = 0; i < 4; i++) {
-    st.state = 'play'; st.objetos.length = 0; st.ps[0].arpones.length = 0;
+    st.state = 'play'; st.tiempo = 1e9; st.objetos.length = 0; st.ps[0].arpones.length = 0;
     st.balls = [{ s: 1, x: st.ps[0].x, y: 300, vx: 0, vy: 0 }, { s: 1, x: 5, y: 20, vx: 0, vy: 0 }];
     paso(st, [disparo], DT);
     for (let k = 0; k < 40 && st.balls.length === 2; k++) paso(st, quietos(st), DT);
@@ -416,6 +416,76 @@ prueba('Eventos: arpón fijo clavado, objeto que cae y objeto recogido', () => {
   paso(st, [disparo], DT); avanzar(st, 1.8);
   const l = nombres(st);
   cierto(l.includes('aparece:0'), 'aparece'); cierto(l.includes('objeto:' + TIPOS.indexOf('reloj')), 'recogido'); cierto(l.includes('reloj:0'), 'reloj');
+});
+
+// ---------- Bloque A de la spec 004 ----------
+const pequena = (x, y = 300) => ({ s: 1, x, y, vx: 0, vy: 0 });
+function reventarAqui(st, s = 1) {
+  st.ps[0].arpones.length = 0; st.ps[0].espera = 0;
+  st.balls.push({ s, x: st.ps[0].x, y: 300, vx: 0, vy: 0 });
+  const n = st.balls.length;
+  paso(st, [disparo], DT);
+  for (let k = 0; k < 60 && st.balls.length >= n; k++) paso(st, quietos(st), DT);
+}
+
+prueba('Tiempo: el nivel 1 da 60 s y, al acabarse, se pierde una vida sin perder el arma', () => {
+  const st = crear(1, 9);
+  igual(st.tiempo, 60, 'tiempo inicial');
+  avanzar(st, 1.5); soloLejos(st);
+  st.ps[0].arma = 1; st.tiempo = 0.5;
+  avanzar(st, 0.6);
+  igual(st.state, 'dead', 'fase'); igual(st.lives, 2, 'vidas'); igual(st.hit, -1, 'nadie tocado'); igual(st.ps[0].arma, 1, 'conserva el arma');
+});
+
+prueba('Tiempo: avisa cada segundo de los últimos 10', () => {
+  const st = jugando(1); soloLejos(st); nombres(st);
+  st.tiempo = AVISO_TIEMPO + 0.5;
+  avanzar(st, 3);
+  igual(nombres(st).filter((e) => e.startsWith('aviso')).length, 3, 'tres avisos en 3 s');
+});
+
+prueba('Bonus: cada segundo que sobra al limpiar vale 20 puntos', () => {
+  const st = jugando(1);
+  st.balls = []; st.tiempo = 30.4;
+  reventarAqui(st);
+  igual(st.state, 'clear', 'limpio'); igual(st.bono, 600, 'bonus (30 s x 20)'); igual(st.score, 100 + 500 + 600, 'puntos');
+});
+
+prueba('Combo: seguidas del mismo tamaño multiplican; otro tamaño o 3 s de pausa lo cortan', () => {
+  const st = jugando(1);
+  st.balls = [pequena(5, 20)];
+  reventarAqui(st); reventarAqui(st); reventarAqui(st);
+  igual(st.score, 100 + 200 + 300, 'x1, x2, x3'); igual(st.combo.n, 3, 'combo de 3');
+  cierto(st.textos.some((q) => q.k === 0 && q.v === 3), 'se ve «x3»');
+  reventarAqui(st, 2);
+  igual(st.combo.n, 1, 'otro tamaño empieza de nuevo');
+  avanzar(st, COMBO_SEG + 0.2);
+  igual(st.combo.n, 0, 'se corta con la pausa');
+});
+
+prueba('Vida extra a los 20.000 y a los 50.000 puntos', () => {
+  const st = jugando(1);
+  st.balls = [pequena(5, 20)];
+  st.score = 19950; reventarAqui(st);
+  igual(st.lives, 4, 'vida a los 20.000'); igual(st.proximaVida, 50000, 'la siguiente');
+  st.score = 49950; st.combo.n = 0; reventarAqui(st);
+  igual(st.lives, 5, 'vida a los 50.000'); igual(st.proximaVida, 100000, 'después cada 50.000');
+});
+
+prueba('Fruta da 500 puntos y 1UP da una vida', () => {
+  const st = jugando(1); soloLejos(st);
+  coger(st, 'fruta');
+  igual(st.score, 500, 'fruta'); cierto(st.textos.some((q) => q.k === 1 && q.v === 500), 'se ve «+500»');
+  coger(st, 'vida');
+  igual(st.lives, 4, '1UP');
+});
+
+prueba('La instantánea lleva el tiempo y los textos flotantes', () => {
+  const st = jugando(2); soloLejos(st);
+  st.tiempo = 42.3;
+  coger(st, 'fruta');
+  const d = decodificar(JSON.parse(JSON.stringify(codificar(st))));
+  cierto(Math.abs(d.tiempo - st.tiempo) < 0.1, 'tiempo'); igual(d.textos.length, st.textos.length, 'textos'); igual(d.textos[0].v, 500, 'valor');
 });
 
 prueba('codificar y decodificar dan el mismo estado (redondeado)', () => {

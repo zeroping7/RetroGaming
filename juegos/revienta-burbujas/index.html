@@ -83,7 +83,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 <script type="module">
 // Página de Revienta Burbujas: menús, controles, red y bucle. Las reglas están en sim.js
 // y el dibujo en render.js (constitución A1).
-import { W, VEL_JUGADOR, crear, paso, moverBurbujas, moverObjetos, disparar, moverArpones, codificar, decodificar, TIPOS, EVENTOS } from './sim.js';
+import { W, VEL_JUGADOR, crear, paso, moverBurbujas, moverObjetos, moverTextos, disparar, moverArpones, codificar, decodificar, TIPOS, EVENTOS } from './sim.js';
 import { dibujar } from './render.js';
 import { crearAudio } from '../../src/audio/sintetizador.js';
 import { RECETAS } from './sonidos.js';
@@ -194,7 +194,7 @@ async function openSala(c,asHost,onFail){
   const gen=++netGen;
   try{
     const net=await import('../../src/net/sala.js');
-    const s=await net.crearSala({juego:'revienta-burbujas',version:6,codigo:c||net.codigoAleatorio(),escuchar:[asHost?'in':'st'],anfitrion:asHost});
+    const s=await net.crearSala({juego:'revienta-burbujas',version:7,codigo:c||net.codigoAleatorio(),escuchar:[asHost?'in':'st'],anfitrion:asHost});
     if(gen!==netGen){s.cerrar();return null}
     sala=s;s.alRecibir(onMsg);return s;
   }catch(e){if(gen===netGen)onFail(e.message&&e.message.startsWith('No se pudo')?e.message:'Sin conexión: el modo online necesita internet.');return null}
@@ -271,6 +271,8 @@ function guestStep(dt){
   if(v.congelado>0)v.congelado=Math.max(0,v.congelado-dt);else moverBurbujas(v.balls,dt);
   moverObjetos(v.objetos,dt);
   v.pop=v.pop.filter(q=>(q.t-=dt)>0);
+  moverTextos(v.textos,dt);
+  v.tiempo=Math.max(0,v.tiempo-dt);
 }
 function sendState(dt){sendAcc+=dt;if(sendAcc<1/25||!sala)return;sendAcc=0;const e=codificar(st);e.pz=pausa;if(pendRed.length){e.e=pendRed.slice(0,64);pendRed.length=0}sala.enviar('st',e)}
 

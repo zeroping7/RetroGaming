@@ -38,15 +38,15 @@ Los objetos son iconos pequeños que caen desde donde estalló la burbuja, al to
 
 **HU-2 — Cambiar de arma.** Como jugador, quiero recoger armas distintas para cubrir más pantalla.
 - [x] Dado el arpón doble, cuando disparo dos veces seguidas, entonces veo dos arpones a la vez.
-- [ ] Dado el arpón fijo, cuando llega al techo, entonces se queda clavado unos segundos y revienta lo que lo toque.
-- [ ] Dado el arpón triple, cuando disparo, entonces salen tres líneas separadas.
-- [ ] Dado que recojo un arma, entonces sustituye a la que llevaba.
+- [x] Dado el arpón fijo, cuando llega al techo, entonces se queda clavado unos segundos y revienta lo que lo toque.
+- [x] Dado el arpón triple, cuando disparo, entonces salen tres líneas separadas.
+- [x] Dado que recojo un arma, entonces sustituye a la que llevaba.
 
 **HU-3 — Ayudas temporales.**
-- [ ] Dado el escudo, cuando me toca una burbuja, entonces pierdo el escudo pero no la vida.
-- [ ] Dado la dinamita, entonces todas las burbujas pasan a ser pequeñas.
-- [ ] Dado el reloj, entonces las burbujas se paran unos segundos y lo indica el HUD.
-- [ ] Dado el reloj activo, cuando un arpón toca una burbuja congelada, entonces se rompe igual que siempre.
+- [x] Dado el escudo, cuando me toca una burbuja, entonces pierdo el escudo pero no la vida.
+- [x] Dado la dinamita, entonces todas las burbujas pasan a ser pequeñas.
+- [x] Dado el reloj, entonces las burbujas se paran unos segundos y lo indica el HUD.
+- [x] Dado el reloj activo, cuando un arpón toca una burbuja congelada, entonces se rompe igual que siempre.
 
 **HU-4 — Con dos jugadores.**
 - [x] Dado el modo 2 jugadores (local u online), cuando uno recoge un arma, entonces solo cambia la suya.

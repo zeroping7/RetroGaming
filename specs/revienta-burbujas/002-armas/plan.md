@@ -103,6 +103,7 @@ Sin pantallas nuevas. En el HUD se añaden un icono pequeño con el arma de cada
 | La predicción de varios arpones del invitado da saltos | media | Misma estrategia que el disparo actual; probar con `?lag=` cuando exista (T012 de 000) o con datos móviles |
 
 ## 9. Pruebas
+- **Modo de prueba:** `?objetos=todos` o `?objetos=tipo1,tipo2` (solo quien simula: local o anfitrión). Cae un objeto en cada burbuja, de esos tipos y por turnos.
 - **`tests.html`:** partir una burbuja; límite de arpones por arma; fijo clavado 3 s; triple con 3 líneas; escudo que absorbe un golpe; objeto que desaparece a los 10 s en el suelo; probabilidad repetible con semilla; dinamita; reloj (congela, pero un disparo sigue rompiendo y los trozos quedan quietos); perder el arma al morir; `codificar` y `decodificar` de ida y vuelta.
 - **Manual en móvil:** jugar hasta que caigan objetos y probar cada uno.
 - **Online:** dos móviles; los dos ven los mismos objetos y cada uno su arma.

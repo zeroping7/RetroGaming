@@ -21,7 +21,7 @@
 <p><a href="./">◀ Volver al juego</a></p>
 <script type="module">
 // Pruebas sin frameworks (constitución Q3): cada una monta un estado, avanza y comprueba.
-import { W, FLOOR, R, crear, paso, codificar, decodificar, soltarObjeto, TIPOS, ARMAS, MAX_OBJETOS, OBJ_EN_SUELO, ESPERA_DISPARO } from './sim.js';
+import { W, FLOOR, R, crear, paso, codificar, decodificar, soltarObjeto, TIPOS, ARMAS, MAX_OBJETOS, OBJ_EN_SUELO, ESPERA_DISPARO, FIJO_SEG, SEP_TRIPLE, RAPIDO_SEG, RELOJ_SEG } from './sim.js';
 
 const pruebas = [];
 const prueba = (nombre, fn) => pruebas.push({ nombre, fn });
@@ -257,6 +257,128 @@ prueba('Al morir se pierde el arma; al pasar de nivel se conserva', () => {
   igual(st.lvl, 2, 'pasa de nivel'); igual(st.ps[1].arma, 1, 'sigue con el doble');
 });
 
+// Coge un objeto: lo suelta encima del jugador y espera a que caiga
+function coger(st, tipo, i = 0) {
+  soltarObjeto(st, st.ps[i].x, 450, tipo);
+  const ent = st.ps.map((p, j) => ({ left: false, right: false, a: false, x: p.x }));
+  avanzar(st, 1.0, ent);
+}
+
+prueba('Arpón fijo: se clava en el techo 3 s y luego desaparece', () => {
+  const st = jugando(1); soloLejos(st);
+  coger(st, 'fijo');
+  igual(ARMAS[st.ps[0].arma], 'fijo', 'arma');
+  paso(st, [disparo], DT);
+  avanzar(st, 1.2);
+  const a = st.ps[0].arpones[0];
+  cierto(a && a.top === 0 && a.clavado > 0, 'clavado en el techo');
+  avanzar(st, FIJO_SEG - 0.5);
+  igual(st.ps[0].arpones.length, 1, 'sigue clavado');
+  avanzar(st, 0.8);
+  igual(st.ps[0].arpones.length, 0, 'se suelta a los 3 s');
+});
+
+prueba('Arpón fijo clavado revienta lo que lo toca y entonces desaparece', () => {
+  const st = jugando(1); soloLejos(st);
+  st.ps[0].arma = ARMAS.indexOf('fijo');
+  paso(st, [disparo], DT);
+  avanzar(st, 1.2);
+  st.balls.push({ s: 1, x: st.ps[0].x + 4, y: 100, vx: 0, vy: 0 });
+  avanzar(st, 0.1);
+  igual(st.balls.length, 1, 'rota (queda la lejana)'); igual(st.ps[0].arpones.length, 0, 'el arpón se va');
+});
+
+prueba('Arpón triple: tres líneas separadas 24 px y no vuelve a disparar hasta que no queda ninguna', () => {
+  const st = jugando(1); soloLejos(st);
+  st.ps[0].arma = ARMAS.indexOf('triple');
+  paso(st, [disparo], DT);
+  const xs = st.ps[0].arpones.map((a) => a.x);
+  igual(xs.length, 3, 'tres arpones');
+  igual(Math.round(xs[1] - xs[0]), SEP_TRIPLE, 'separación'); igual(Math.round(xs[2] - xs[1]), SEP_TRIPLE, 'separación');
+  avanzar(st, 0.5, [disparo]);
+  igual(st.ps[0].arpones.length, 3, 'no salen más mientras quedan');
+  avanzar(st, 0.6);
+  igual(st.ps[0].arpones.length, 0, 'llegan al techo');
+  paso(st, [disparo], DT);
+  igual(st.ps[0].arpones.length, 3, 'otra vez tres');
+});
+
+prueba('Velocidad: el arpón sube más rápido durante 10 s', () => {
+  const st = jugando(1); soloLejos(st);
+  paso(st, [disparo], DT); avanzar(st, 0.3);
+  const normal = st.ps[0].arpones[0].top;
+  avanzar(st, 1.5);
+  coger(st, 'velocidad');
+  cierto(st.ps[0].rapido > 0, 'activo');
+  paso(st, [disparo], DT); avanzar(st, 0.3);
+  cierto(st.ps[0].arpones[0].top < normal - 50, 'sube más');
+  avanzar(st, RAPIDO_SEG);
+  igual(st.ps[0].rapido <= 0, true, 'se acaba');
+});
+
+prueba('Escudo: aguanta un golpe, luego 1 s sin daño, y al siguiente golpe se pierde la vida', () => {
+  const st = jugando(1); soloLejos(st);
+  coger(st, 'escudo');
+  cierto(st.ps[0].escudo, 'tiene escudo');
+  st.balls.push({ s: 2, x: st.ps[0].x, y: FLOOR - 20, vx: 0, vy: 0 });
+  paso(st, quietos(st), DT);
+  igual(st.state, 'play', 'no muere'); igual(st.lives, 3, 'mismas vidas'); igual(st.ps[0].escudo, false, 'escudo gastado');
+  avanzar(st, 1.2);
+  st.balls = [{ s: 2, x: st.ps[0].x, y: FLOOR - 20, vx: 0, vy: 0 }];
+  paso(st, quietos(st), DT);
+  igual(st.state, 'dead', 'ahora sí');
+});
+
+prueba('Dinamita: todas las burbujas pasan al tamaño más pequeño', () => {
+  const st = jugando(1);
+  st.balls = [{ s: 4, x: 100, y: 100, vx: 0, vy: 0 }, { s: 2, x: 300, y: 100, vx: 0, vy: 0 }];
+  st.ps[0].x = 200;
+  coger(st, 'dinamita');
+  cierto(st.balls.every((b) => b.s === 1), 'todas pequeñas'); igual(st.balls.length, 8 + 2, 'una de 4 da 8 y una de 2 da 2');
+});
+
+prueba('Reloj: congela las burbujas 5 s, siguen haciendo daño y se pueden romper', () => {
+  const st = jugando(1);
+  st.balls = [{ s: 2, x: 60, y: 200, vx: 70, vy: 0 }, { s: 1, x: 5, y: 20, vx: 0, vy: 0 }];
+  st.ps[0].x = 250;
+  coger(st, 'reloj');
+  cierto(st.congelado > 0, 'activo');
+  const b = st.balls[0], x0 = b.x, y0 = b.y;
+  avanzar(st, 1);
+  igual(b.x, x0, 'quieta en x'); igual(b.y, y0, 'quieta en y');
+  st.ps[0].x = b.x; paso(st, [disparo], DT); avanzar(st, 0.6);
+  cierto(st.balls.every((c) => c.s === 1), 'rota en dos pequeñas');
+  const piezas = st.balls.map((c) => c.y);
+  avanzar(st, 0.5);
+  cierto(st.balls.every((c, i) => c.y === piezas[i]), 'los trozos también quietos');
+  avanzar(st, RELOJ_SEG);
+  igual(st.congelado, 0, 'se acaba');
+});
+
+prueba('Modo de prueba: cae siempre un objeto, de los tipos pedidos y por turnos', () => {
+  const st = crear(1, 7, { prueba: ['fijo', 'reloj'] });
+  avanzar(st, 1.5);
+  const tipos = [];
+  for (let i = 0; i < 4; i++) {
+    st.state = 'play'; st.objetos.length = 0; st.ps[0].arpones.length = 0;
+    st.balls = [{ s: 1, x: st.ps[0].x, y: 300, vx: 0, vy: 0 }, { s: 1, x: 5, y: 20, vx: 0, vy: 0 }];
+    paso(st, [disparo], DT);
+    for (let k = 0; k < 40 && st.balls.length === 2; k++) paso(st, quietos(st), DT);
+    tipos.push(TIPOS[st.objetos[0].tipo]);
+  }
+  igual(tipos.join(','), 'fijo,reloj,fijo,reloj', 'tipos');
+});
+
+prueba('La instantánea lleva arpón fijo clavado, escudo, velocidad y reloj', () => {
+  const st = jugando(2); soloLejos(st);
+  st.ps[0].arma = ARMAS.indexOf('fijo'); st.ps[1].escudo = true; st.ps[1].rapido = 5; st.congelado = 3;
+  paso(st, [disparo, nada()], DT); avanzar(st, 1.2);
+  const d = decodificar(JSON.parse(JSON.stringify(codificar(st))));
+  const a = d.ps[0].arpones[0];
+  cierto(a.fijo && a.clavado > 0, 'arpón fijo clavado'); igual(ARMAS[d.ps[0].arma], 'fijo', 'arma');
+  cierto(d.ps[1].escudo && d.ps[1].rapido > 0, 'escudo y velocidad'); cierto(d.congelado > 1.5, 'reloj');
+});
+
 prueba('codificar y decodificar dan el mismo estado (redondeado)', () => {
   const st = jugando(2);
   st.ps[0].arpones.push({ x: 120.4, top: 300.6 });
@@ -274,8 +396,8 @@ prueba('codificar y decodificar dan el mismo estado (redondeado)', () => {
 
 prueba('decodificar rechaza mensajes rotos y limita lo que acepta', () => {
   igual(decodificar(null), null, 'nulo'); igual(decodificar({ b: 'x', p: [] }), null, 'tipos');
-  const d = decodificar({ m: 1, b: new Array(500).fill(2), p: [1, 0, 0, -1, -1, -1, -1, -1, -1, 2, 9, 99, 5, 5, -1, -1, -1, -1, 3, 0, 0, 0, 0, 0, 0, 0, 0], o: [99, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 2, 1, 1, 0, 0] });
-  igual(d.balls.length, 80, 'máximo 80 burbujas'); igual(d.objetos.length, 2, 'máximo 2 objetos y tipos válidos'); igual(d.ps.length, 2, 'máximo 2 jugadores'); igual(d.ps[1].dir, 1, 'dirección limitada'); igual(d.ps[1].arma, 0, 'arma inválida → normal'); igual(d.ps[1].arpones.length, 1, 'arpones');
+  const d = decodificar({ m: 1, b: new Array(500).fill(2), p: [1, 0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, 2, 9, 99, 7, 5, 5, 0, -1, -1, -1, -1, -1, -1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], o: [99, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 2, 1, 1, 0, 0] });
+  igual(d.balls.length, 80, 'máximo 80 burbujas'); igual(d.objetos.length, 2, 'máximo 2 objetos y tipos válidos'); igual(d.ps.length, 2, 'máximo 2 jugadores'); igual(d.ps[1].dir, 1, 'dirección limitada'); igual(d.ps[1].arma, 0, 'arma inválida → normal'); igual(d.ps[1].arpones.length, 1, 'arpones'); cierto(d.ps[1].escudo, 'escudo');
 });
 
 const lista = document.getElementById('lista');

@@ -1,5 +1,5 @@
 // Dibujo de Revienta Burbujas en canvas 2D. Solo lee el estado: nunca lo cambia.
-import { W, H, FLOOR, R, TIPOS, TAM_OBJETO, OBJ_EN_SUELO, OBJ_PARPADEO } from './sim.js';
+import { W, H, FLOOR, R, TIPOS, ARMAS, TAM_OBJETO, OBJ_EN_SUELO, OBJ_PARPADEO } from './sim.js';
 
 const COL = ['', '#ff6fae', '#5ee6c2', '#6fa8ff', '#ff7a4d'];
 const PCOL = [{ body: '#2ec4b6', hat: '#e94f37', shot: '#ffcf3a' }, { body: '#ff8fc7', hat: '#7b5cff', shot: '#ff8fc7' }];
@@ -25,16 +25,56 @@ function simbolo(x, tipo, cx, cy) {
   }
 }
 
-function dibujarObjeto(x, o, cx, cy) {
-  // parpadea los últimos segundos en el suelo
-  if (o.enSuelo > OBJ_EN_SUELO - OBJ_PARPADEO && Math.floor(o.enSuelo * 8) % 2) return;
-  const tipo = TIPOS[o.tipo], m = TAM_OBJETO / 2;
+/** Icono de un objeto (también se usa en el HUD). */
+function icono(x, tipo, cx, cy) {
+  const m = TAM_OBJETO / 2;
   x.fillStyle = OBJ_COL[tipo];
   x.beginPath();
   if (x.roundRect) x.roundRect(cx - m, cy - m, TAM_OBJETO, TAM_OBJETO, 4); else x.rect(cx - m, cy - m, TAM_OBJETO, TAM_OBJETO);
   x.fill();
   x.strokeStyle = '#0d0b1f'; x.lineWidth = 1; x.stroke();
   simbolo(x, tipo, cx, cy);
+}
+
+function dibujarObjeto(x, o, cx, cy) {
+  // parpadea los últimos segundos en el suelo
+  if (o.enSuelo > OBJ_EN_SUELO - OBJ_PARPADEO && Math.floor(o.enSuelo * 8) % 2) return;
+  icono(x, TIPOS[o.tipo], cx, cy);
+}
+
+// Arpón normal: cuerda discontinua y punta. Fijo: cable grueso y continuo con brillo.
+function dibujarArpon(x, a, top, base, c) {
+  if (a.fijo) {
+    if (a.clavado > 0 && a.clavado < 0.5 && Math.floor(a.clavado * 12) % 2) return; // va a soltarse
+    x.fillStyle = c; x.fillRect(a.x - 2.5, top, 5, base - top);
+    x.fillStyle = '#ffffff'; x.fillRect(a.x - 0.5, top, 1, base - top);
+    x.fillStyle = c; x.fillRect(a.x - 6, top, 12, 4); // tope clavado / cabeza
+    return;
+  }
+  x.strokeStyle = c; x.lineWidth = 3; x.setLineDash([6, 4]);
+  x.beginPath(); x.moveTo(a.x, base); x.lineTo(a.x, top); x.stroke(); x.setLineDash([]);
+  x.fillStyle = c; x.beginPath();
+  x.moveTo(a.x - 6, top + 8); x.lineTo(a.x, top - 2); x.lineTo(a.x + 6, top + 8); x.fill();
+}
+
+// HUD: arma y potenciadores de cada jugador, en el centro de la franja inferior
+function hudJugadores(x, st) {
+  const slots = st.ps.map((p) => {
+    const l = [];
+    if (p.arma > 0) l.push(ARMAS[p.arma]);
+    if (p.rapido > 0) l.push('velocidad');
+    if (p.escudo) l.push('escudo');
+    return l;
+  });
+  const ancho = slots.reduce((t, l) => t + Math.max(1, l.length) * 18, 0) + (st.ps.length - 1) * 10;
+  let cx = W / 2 - ancho / 2 + 9;
+  st.ps.forEach((p, i) => {
+    const l = slots[i];
+    if (st.n > 1) { x.fillStyle = PCOL[i].body; x.fillRect(cx - 9, FLOOR + 38, Math.max(1, l.length) * 18 - 2, 2); }
+    if (!l.length) { x.fillStyle = 'rgba(244,241,255,.25)'; x.fillRect(cx - 1, FLOOR + 22, 2, 12); } // arpón normal
+    for (const t of l) { icono(x, t, cx, FLOOR + 28); cx += 18; }
+    cx += (l.length ? 0 : 18) + 10;
+  });
 }
 
 /**
@@ -82,19 +122,14 @@ export function dibujar(x, st, v) {
   }
 
   st.ps.forEach((p, i) => {
-    const c = PCOL[i].shot;
-    for (const a of p.arpones) {
-      const top = L(a.atop, a.top);
-      x.strokeStyle = c; x.lineWidth = 3; x.setLineDash([6, 4]);
-      x.beginPath(); x.moveTo(a.x, FLOOR - p.h); x.lineTo(a.x, top); x.stroke(); x.setLineDash([]);
-      x.fillStyle = c; x.beginPath();
-      x.moveTo(a.x - 6, top + 8); x.lineTo(a.x, top - 2); x.lineTo(a.x + 6, top + 8); x.fill();
-    }
+    for (const a of p.arpones) dibujarArpon(x, a, L(a.atop, a.top), FLOOR - p.h, PCOL[i].shot);
   });
+  const quietas = st.congelado > 0;
   for (const b of st.balls) {
     const r = R[b.s], bx = L(b.ax, b.x), by = L(b.ay, b.y);
     x.fillStyle = COL[b.s]; x.beginPath(); x.arc(bx, by, r, 0, 7); x.fill();
     x.fillStyle = 'rgba(255,255,255,.55)'; x.beginPath(); x.arc(bx - r * 0.35, by - r * 0.35, r * 0.25, 0, 7); x.fill();
+    if (quietas) { x.strokeStyle = '#e6f7ff'; x.lineWidth = 2; x.beginPath(); x.arc(bx, by, r, 0, 7); x.stroke(); } // congeladas
   }
   for (const q of st.pop) {
     x.strokeStyle = COL[q.s]; x.lineWidth = 2;
@@ -104,7 +139,13 @@ export function dibujar(x, st, v) {
   const yo = v.modo === 'guest' ? 1 : v.modo === 'host' ? 0 : -1;
   st.ps.forEach((p, i) => {
     if (st.state === 'dead' && st.hit === i && Math.floor(st.t * 10) % 2) return;
+    if (p.invulnerable > 0 && Math.floor(v.ahora / 80) % 2) return; // parpadeo tras perder el escudo
     const px = L(p.ax, p.x), bx = px - p.w / 2, by = FLOOR - p.h, c = PCOL[i];
+    if (p.escudo) {
+      x.strokeStyle = c.body; x.lineWidth = 2; x.globalAlpha = 0.85;
+      x.beginPath(); x.ellipse(px, by + p.h / 2 - 2, p.w / 2 + 7, p.h / 2 + 7, 0, 0, 7); x.stroke();
+      x.globalAlpha = 1;
+    }
     x.fillStyle = c.body; x.fillRect(bx + 3, by + 12, p.w - 6, p.h - 12);
     x.fillStyle = '#ffd9b0'; x.fillRect(bx + 6, by, p.w - 12, 13);
     x.fillStyle = '#0d0b1f'; x.fillRect(bx + 9, by + 5, 3, 3); x.fillRect(bx + p.w - 12, by + 5, 3, 3);
@@ -117,6 +158,11 @@ export function dibujar(x, st, v) {
   x.textAlign = 'right'; x.fillText('NIVEL ' + st.lvl, W - 10, FLOOR + 20);
   x.textAlign = 'left'; x.fillStyle = '#ff6fae'; x.fillText('♥'.repeat(Math.max(0, Math.min(9, st.lives))), 10, FLOOR + 36);
   x.textAlign = 'right'; x.fillStyle = '#a59fd6'; x.fillText(v.modo === 'local' ? 'RÉCORD ' + v.record : 'ONLINE ' + v.codigo, W - 10, FLOOR + 36);
+  hudJugadores(x, st);
+  if (quietas) {
+    icono(x, 'reloj', W / 2 - 22, 30);
+    x.fillStyle = '#f4f1ff'; x.font = `12px ${FUENTE}`; x.textAlign = 'left'; x.fillText(String(Math.ceil(st.congelado)), W / 2 - 8, 36);
+  }
   if (v.modo !== 'local') { x.fillStyle = '#a59fd6'; x.font = `7px ${FUENTE}`; x.textAlign = 'left'; x.fillText(v.red, 8, 14); }
   if (st.state === 'ready') txt(x, 'NIVEL ' + st.lvl, 250, 18, '#ffcf3a');
   if (st.state === 'clear') txt(x, '¡LIMPIO! +500', 250, 16, '#5ee6c2');

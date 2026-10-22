@@ -21,7 +21,7 @@
 <p><a href="./">◀ Volver al juego</a></p>
 <script type="module">
 // Pruebas sin frameworks (constitución Q3): cada una monta un estado, avanza y comprueba.
-import { W, FLOOR, R, crear, paso, codificar, decodificar, soltarObjeto, TIPOS, ARMAS, MAX_OBJETOS, OBJ_EN_SUELO, ESPERA_DISPARO, FIJO_SEG, SEP_TRIPLE, RAPIDO_SEG, RELOJ_SEG } from './sim.js';
+import { W, FLOOR, R, crear, paso, codificar, decodificar, soltarObjeto, TIPOS, ARMAS, MAX_OBJETOS, OBJ_EN_SUELO, ESPERA_DISPARO, FIJO_SEG, SEP_TRIPLE, RAPIDO_SEG, RELOJ_SEG, EVENTOS } from './sim.js';
 
 const pruebas = [];
 const prueba = (nombre, fn) => pruebas.push({ nombre, fn });
@@ -377,6 +377,45 @@ prueba('La instantánea lleva arpón fijo clavado, escudo, velocidad y reloj', (
   const a = d.ps[0].arpones[0];
   cierto(a.fijo && a.clavado > 0, 'arpón fijo clavado'); igual(ARMAS[d.ps[0].arma], 'fijo', 'arma');
   cierto(d.ps[1].escudo && d.ps[1].rapido > 0, 'escudo y velocidad'); cierto(d.congelado > 1.5, 'reloj');
+});
+
+// ---------- Eventos para el sonido (spec 003) ----------
+const nombres = (st) => { const l = []; for (let i = 0; i < st.eventos.length; i += 2) l.push(EVENTOS[st.eventos[i]] + ':' + st.eventos[i + 1]); st.eventos.length = 0; return l; };
+
+prueba('Eventos: empezar, disparar, reventar (con tamaño), limpiar el nivel', () => {
+  const st = crear(1, 3);
+  avanzar(st, 1.5);
+  cierto(nombres(st).includes('listo:0'), 'empieza el nivel');
+  st.balls = [{ s: 1, x: st.ps[0].x, y: 300, vx: 0, vy: 0 }];
+  paso(st, [disparo], DT);
+  avanzar(st, 0.5);
+  const l = nombres(st);
+  cierto(l.includes('disparo:0'), 'disparo del J1'); cierto(l.includes('estallido:1'), 'estallido tamaño 1'); cierto(l.includes('limpio:0'), 'nivel limpio');
+});
+
+prueba('Eventos: escudo roto, muerte y fin de partida', () => {
+  const st = jugando(1); nombres(st);
+  st.lives = 1; st.ps[0].escudo = true;
+  st.balls = [{ s: 2, x: st.ps[0].x, y: FLOOR - 20, vx: 0, vy: 0 }];
+  paso(st, quietos(st), DT);
+  cierto(nombres(st).includes('escudo:0'), 'escudo');
+  avanzar(st, 1.2);
+  st.balls = [{ s: 2, x: st.ps[0].x, y: FLOOR - 20, vx: 0, vy: 0 }];
+  avanzar(st, 1.5);
+  const l = nombres(st);
+  cierto(l.includes('muerte:0'), 'muerte'); cierto(l.includes('fin:0'), 'fin de partida');
+});
+
+prueba('Eventos: arpón fijo clavado, objeto que cae y objeto recogido', () => {
+  const st = crear(1, 5, { prueba: ['reloj'] }); avanzar(st, 1.5); soloLejos(st); nombres(st);
+  st.ps[0].arma = ARMAS.indexOf('fijo');
+  paso(st, [disparo], DT); avanzar(st, 1.2);
+  cierto(nombres(st).includes('clavado:0'), 'clavado');
+  st.ps[0].arpones.length = 0; st.ps[0].arma = 0;
+  st.balls = [{ s: 1, x: st.ps[0].x, y: 300, vx: 0, vy: 0 }, { s: 1, x: 5, y: 20, vx: 0, vy: 0 }];
+  paso(st, [disparo], DT); avanzar(st, 1.8);
+  const l = nombres(st);
+  cierto(l.includes('aparece:0'), 'aparece'); cierto(l.includes('objeto:' + TIPOS.indexOf('reloj')), 'recogido'); cierto(l.includes('reloj:0'), 'reloj');
 });
 
 prueba('codificar y decodificar dan el mismo estado (redondeado)', () => {

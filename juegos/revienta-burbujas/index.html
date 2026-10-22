@@ -41,6 +41,7 @@ canvas{display:block;max-width:100%;max-height:100%;aspect-ratio:400/560;border-
 button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .hint{font-size:8px;color:var(--muted);margin:0;text-align:center;line-height:1.7}
 #share{position:absolute;bottom:24%;left:50%;transform:translateX(-50%);font:inherit;font-size:10px;padding:14px 18px;border:0;border-radius:10px;background:var(--accent);color:#2a1b00;cursor:pointer;white-space:nowrap}
+#snd{position:absolute;top:5px;right:64px;z-index:2;font-size:16px;line-height:1;padding:6px 8px;border:0;border-radius:6px;background:rgba(0,0,0,.4);color:var(--fg);cursor:pointer}
 #quit{position:absolute;top:8px;right:8px;font:inherit;font-size:8px;padding:8px;border:0;border-radius:6px;background:rgba(0,0,0,.4);color:var(--fg);cursor:pointer}
 @media (hover:hover) and (pointer:fine){#pads{display:none}}
 </style>
@@ -49,6 +50,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 <div id="wrap">
   <canvas id="c" width="400" height="560"></canvas>
   <button id="quit" hidden>SALIR</button>
+  <button id="snd" aria-label="Sonido"></button>
   <button id="share" hidden>COMPARTIR ENLACE</button>
   <div class="menu" id="menu">
     <h1>REVIENTA<br>BURBUJAS</h1>
@@ -78,14 +80,31 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 <script type="module">
 // Página de Revienta Burbujas: menús, controles, red y bucle. Las reglas están en sim.js
 // y el dibujo en render.js (constitución A1).
-import { W, VEL_JUGADOR, crear, paso, moverBurbujas, moverObjetos, disparar, moverArpones, codificar, decodificar, TIPOS } from './sim.js';
+import { W, VEL_JUGADOR, crear, paso, moverBurbujas, moverObjetos, disparar, moverArpones, codificar, decodificar, TIPOS, EVENTOS } from './sim.js';
 import { dibujar } from './render.js';
+import { crearAudio } from '../../src/audio/sintetizador.js';
+import { RECETAS } from './sonidos.js';
 
 const cv=document.getElementById('c'),x=cv.getContext('2d'),$=id=>document.getElementById(id);
 const keys=[{l:false,r:false,f:false},{l:false,r:false,f:false}];
 let st={state:'menu'},best=0,mode='menu',code='',guestIn={l:false,r:false,f:false},lastSent='',ronda=-1;
 let hostState=null,sendAcc=0,gview=null,lastSnap=-1,hostTargetX=0,hostDir=0,guestDir=0,guestLat=0.15,guestXAt=0,guestX=null,lat=0.15,localShotAt=0;
 try{best=+localStorage.getItem('rb-best')||0}catch(e){}
+
+/* ---------- sonido (spec 003): sim.js anota eventos y aquí suenan ---------- */
+const audio=crearAudio(RECETAS),pendRed=[];
+function pintarSnd(){const b=$('snd');b.textContent=audio.silencio?'🔇':'🔊';b.setAttribute('aria-pressed',String(!audio.silencio))}
+$('snd').onclick=e=>{e.stopPropagation();audio.alternar();pintarSnd();$('snd').blur()};
+addEventListener('keydown',e=>{if((e.key==='m'||e.key==='M')&&!(e.target&&e.target.tagName==='INPUT')){audio.alternar();pintarSnd()}});
+pintarSnd();
+// Suena una lista plana de pares [código, dato]. `yo`: jugador cuyos disparos ya sonaron (invitado)
+function sonar(lista,yo=-1){
+  for(let i=0;i+1<lista.length&&i<128;i+=2){
+    const n=EVENTOS[lista[i]|0],d=lista[i+1]|0;if(!n)continue;
+    if((n==='disparo'||n==='clavado')&&d===yo)continue;
+    audio.tocar(n,d);
+  }
+}
 
 /* ---------- partida: las reglas están en sim.js ---------- */
 const ent=[{left:false,right:false,a:false,x:undefined},{left:false,right:false,a:false,x:undefined}]; // reutilizadas (R5)
@@ -105,6 +124,11 @@ function update(dt){
     }
   }
   paso(st,ent,dt);
+  if(st.eventos.length){
+    sonar(st.eventos);
+    if(mode==='host'&&pendRed.length<64)pendRed.push(...st.eventos); // el invitado los oirá con la próxima instantánea
+    st.eventos.length=0;
+  }
   if(st.ronda!==ronda){ronda=st.ronda;guestX=null}
   if(st.state==='again'){if(mode==='local')toMenu();else newGame(2);return}
   if(st.score>best){best=st.score;try{localStorage.setItem('rb-best',best)}catch(e){}}
@@ -112,7 +136,7 @@ function update(dt){
 
 /* ---------- red (src/net/sala.js): el anfitrión simula, el invitado envía mandos y dibuja ---------- */
 let sala=null,heardAt=0,helloAt=0,joinStart=0,netGen=0;
-function closeNet(){netGen++;if(sala){sala.cerrar();sala=null}hostState=null;heardAt=0;gview=null;lastSnap=-1;guestX=null;lat=0.15}
+function closeNet(){netGen++;pendRed.length=0;if(sala){sala.cerrar();sala=null}hostState=null;heardAt=0;gview=null;lastSnap=-1;guestX=null;lat=0.15}
 function enterOnline(asHost,c){code=c;mode=asHost?'host':'guest';st={state:'wait'};hideMenus();$('pad2').hidden=true;$('quit').hidden=false}
 function netInfo(){return sala?(sala.via==='directa'?'DIRECTA':sala.servidores()):''}
 function onMsg(tp,d){
@@ -157,6 +181,7 @@ function guestStep(dt){
   const now=performance.now();
   if(hostState&&hostState.n!==lastSnap){
     lastSnap=hostState.n;const s=decodificar(hostState);
+    if(Array.isArray(hostState.e))sonar(hostState.e,1); // mis disparos ya sonaron al pulsar
     // retardo de ida (la mitad de la ida y vuelta que mide la sala)
     if(sala)lat=sala.retardo/2000;
     if(s&&s.ps.length===2){
@@ -187,15 +212,15 @@ function guestStep(dt){
   if(v.state!=='play'){v.t-=dt;return}
   const me=v.ps[1],k=keys[0];
   if(k.l)me.x-=VEL_JUGADOR*dt;if(k.r)me.x+=VEL_JUGADOR*dt;me.x=Math.max(13,Math.min(W-13,me.x));
-  if(k.f&&disparar(me))localShotAt=now;
+  if(k.f&&disparar(me)){localShotAt=now;audio.tocar('disparo')}
   hostTargetX=Math.max(13,Math.min(W-13,hostTargetX+hostDir*VEL_JUGADOR*dt));
   v.ps[0].x+=(hostTargetX-v.ps[0].x)*Math.min(1,dt*20);
-  for(const p of v.ps)moverArpones(p,dt);
+  v.ps.forEach((p,i)=>{if(moverArpones(p,dt)&&i===1)audio.tocar('clavado')});
   if(v.congelado>0)v.congelado=Math.max(0,v.congelado-dt);else moverBurbujas(v.balls,dt);
   moverObjetos(v.objetos,dt);
   v.pop=v.pop.filter(q=>(q.t-=dt)>0);
 }
-function sendState(dt){sendAcc+=dt;if(sendAcc<1/25||!sala)return;sendAcc=0;sala.enviar('st',codificar(st))}
+function sendState(dt){sendAcc+=dt;if(sendAcc<1/25||!sala)return;sendAcc=0;const e=codificar(st);if(pendRed.length){e.e=pendRed.slice(0,64);pendRed.length=0}sala.enviar('st',e)}
 
 /* ---------- dibujo: render.js ---------- */
 const vista={modo:'menu',alfa:1,codigo:'',red:'',servidores:'',record:0,ahora:0}; // reutilizada (R5)

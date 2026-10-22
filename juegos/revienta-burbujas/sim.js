@@ -35,6 +35,16 @@ export const OBJ_PARPADEO = 2;                  // s finales en los que parpadea
 const G_OBJETO = 600, SALTO_OBJETO = -160;      // caída y pequeño salto inicial, px/s² y px/s
 const PUNTOS_OBJETO = 100;
 
+// Eventos (spec 003): lo que ha pasado en el tick, para que la página lo convierta en sonido.
+// Cada evento es [código, dato]: dato = jugador (disparo, clavado, escudo, muerte),
+// tamaño (estallido) o tipo de objeto (objeto); 0 en el resto.
+export const EVENTOS = ['listo', 'disparo', 'clavado', 'estallido', 'aparece', 'objeto', 'dinamita', 'reloj', 'escudo', 'muerte', 'limpio', 'fin'];
+const MAX_EVENTOS = 64; // por si nadie los recoge (p. ej. en las pruebas)
+function ev(st, nombre, dato = 0) {
+  if (st.eventos.length >= MAX_EVENTOS) st.eventos.splice(0, 2);
+  st.eventos.push(EVENTOS.indexOf(nombre), dato);
+}
+
 /** @typedef {{ s: number, x: number, y: number, vx: number, vy: number }} Burbuja  s: tamaño 1-4
  *  @typedef {{ x: number, top: number, fijo: boolean, clavado: number }} Arpon
  *  clavado: s que le quedan clavado en el techo (0 = subiendo). Solo el arpón fijo se clava.
@@ -63,6 +73,7 @@ const PUNTOS_OBJETO = 100;
  *  @property {Objeto[]} objetos
  *  @property {number} semilla  estado del generador aleatorio (nunca Math.random() aquí)
  *  @property {number[]|null} prueba  modo de prueba: tipos que caen siempre, por turnos
+ *  @property {number[]} eventos  pares [código, dato] pendientes de sonar (los vacía la página)
  *
  *  @typedef {{ left: boolean, right: boolean, a: boolean, x?: number }} Entrada
  *  `x` (opcional): posición a la que acercar al jugador, en vez de moverlo con left/right.
@@ -96,8 +107,8 @@ export function soltarObjeto(st, x, y, tipo) {
 // Al reventar una burbuja: a veces cae un objeto. En modo de prueba, siempre y por turnos.
 function quizaSoltar(st, x, y) {
   if (st.objetos.length >= MAX_OBJETOS) return;
-  if (st.prueba && st.prueba.length) { soltarObjeto(st, x, y, st.prueba[st.pruebaI++ % st.prueba.length]); return; }
-  if (azar(st) < PROB_OBJETO) soltarObjeto(st, x, y);
+  if (st.prueba && st.prueba.length) { soltarObjeto(st, x, y, st.prueba[st.pruebaI++ % st.prueba.length]); ev(st, 'aparece'); return; }
+  if (azar(st) < PROB_OBJETO) { soltarObjeto(st, x, y); ev(st, 'aparece'); }
 }
 
 /** Caída de los objetos y tiempo en el suelo. También lo usa la predicción del invitado. */
@@ -124,8 +135,9 @@ export function disparar(p) {
 }
 
 /** Sube los arpones, clava el fijo en el techo y lleva los temporizadores del jugador.
- *  También lo usa el invitado. */
+ *  También lo usa el invitado. @returns {boolean} si algún arpón se acaba de clavar */
 export function moverArpones(p, dt) {
+  let clavo = false;
   if (p.espera > 0) p.espera -= dt;
   if (p.invulnerable > 0) p.invulnerable -= dt;
   if (p.rapido > 0) p.rapido -= dt;
@@ -135,9 +147,10 @@ export function moverArpones(p, dt) {
     if (a.clavado > 0) { a.clavado -= dt; if (a.clavado <= 0) p.arpones.splice(k, 1); continue; }
     a.top -= vel * dt;
     if (a.top <= 0) {
-      if (a.fijo) { a.top = 0; a.clavado = FIJO_SEG; } else p.arpones.splice(k, 1);
+      if (a.fijo) { a.top = 0; a.clavado = FIJO_SEG; clavo = true; } else p.arpones.splice(k, 1);
     }
   }
+  return clavo;
 }
 
 /* ---------- burbujas ---------- */
@@ -216,7 +229,7 @@ function reset(st) {
  */
 export function crear(n, semilla = (Date.now() ^ (performance.now() * 1000)) | 0, opciones = {}) {
   const prueba = (opciones.prueba || []).map((t) => TIPOS.indexOf(t)).filter((t) => t >= 0);
-  const st = { n, score: 0, lives: n === 2 ? 5 : 3, lvl: 1, ronda: 0, semilla, prueba: prueba.length ? prueba : null, pruebaI: 0 };
+  const st = { n, score: 0, lives: n === 2 ? 5 : 3, lvl: 1, ronda: 0, semilla, prueba: prueba.length ? prueba : null, pruebaI: 0, eventos: [] };
   reset(st);
   return st;
 }
@@ -228,8 +241,8 @@ export function crear(n, semilla = (Date.now() ^ (performance.now() * 1000)) | 0
  */
 export function paso(st, entradas, dt) {
   guardarAnterior(st);
-  if (st.state === 'ready') { st.t -= dt; if (st.t <= 0) st.state = 'play'; return; }
-  if (st.state === 'dead') { st.t -= dt; if (st.t <= 0) { if (st.lives <= 0) { st.state = 'over'; st.t = 1; } else reset(st); } return; }
+  if (st.state === 'ready') { st.t -= dt; if (st.t <= 0) { st.state = 'play'; ev(st, 'listo'); } return; }
+  if (st.state === 'dead') { st.t -= dt; if (st.t <= 0) { if (st.lives <= 0) { st.state = 'over'; st.t = 1; ev(st, 'fin'); } else reset(st); } return; }
   if (st.state === 'clear') { st.t -= dt; if (st.t <= 0) { st.lvl++; reset(st); } return; }
   if (st.state === 'over') { st.t -= dt; if (st.t <= 0 && st.ps.some((p, i) => entradas[i].a)) st.state = 'again'; return; }
   if (st.state !== 'play') return;
@@ -240,8 +253,8 @@ export function paso(st, entradas, dt) {
     if (typeof k.x === 'number') p.x += (k.x - p.x) * Math.min(1, dt * 20);
     else { if (k.left) p.x -= VEL_JUGADOR * dt; if (k.right) p.x += VEL_JUGADOR * dt; }
     p.x = Math.max(p.w / 2, Math.min(W - p.w / 2, p.x));
-    if (k.a) disparar(p);
-    moverArpones(p, dt);
+    if (k.a && disparar(p)) ev(st, 'disparo', i);
+    if (moverArpones(p, dt)) ev(st, 'clavado', i);
   });
 
   // Reloj: las burbujas no se mueven, pero siguen haciendo daño y se pueden romper
@@ -257,6 +270,7 @@ export function paso(st, entradas, dt) {
       if (k >= 0) {
         p.arpones.splice(k, 1); st.score += PUNTOS[b.s];
         st.pop.push({ x: b.x, y: b.y, s: b.s, t: 0.3 });
+        ev(st, 'estallido', b.s);
         quizaSoltar(st, b.x, b.y);
         if (b.s > 1) for (const d of [-1, 1]) {
           const n = newBall(b.s - 1, b.x + d * (quietas ? R[b.s - 1] : 4), b.y, d); // congeladas: separadas para verse
@@ -271,8 +285,8 @@ export function paso(st, entradas, dt) {
       if (p.invulnerable > 0) continue;
       const px = Math.max(p.x - p.w / 2 + 4, Math.min(p.x + p.w / 2 - 4, b.x)), py = Math.max(FLOOR - p.h + 6, Math.min(FLOOR, b.y));
       if ((b.x - px) ** 2 + (b.y - py) ** 2 < r * r) {
-        if (p.escudo) { p.escudo = false; p.invulnerable = INVULNERABLE_SEG; continue; } // el escudo aguanta el golpe
-        st.lives--; st.state = 'dead'; st.t = 1.3; st.hit = i;
+        if (p.escudo) { p.escudo = false; p.invulnerable = INVULNERABLE_SEG; ev(st, 'escudo', i); continue; } // el escudo aguanta el golpe
+        st.lives--; st.state = 'dead'; st.t = 1.3; st.hit = i; ev(st, 'muerte', i);
         p.arma = 0; p.escudo = false; p.rapido = 0; // el tocado lo pierde todo (P2)
         st.ps.forEach((q) => { q.arpones.length = 0; });
         return;
@@ -283,7 +297,7 @@ export function paso(st, entradas, dt) {
   st.balls = nb;
   st.pop = st.pop.filter((q) => (q.t -= dt) > 0);
   pasoObjetos(st, dt);
-  if (!st.balls.length) { st.state = 'clear'; st.t = 1.6; st.score += 500; }
+  if (!st.balls.length) { st.state = 'clear'; st.t = 1.6; st.score += 500; ev(st, 'limpio'); }
 }
 
 /** Objetos: caen, se recogen al tocarlos y desaparecen tras 10 s en el suelo. */
@@ -307,12 +321,13 @@ function recoger(st, i, o) {
   const p = st.ps[i], tipo = TIPOS[o.tipo];
   st.score += PUNTOS_OBJETO;
   st.pop.push({ x: o.x, y: o.y, s: 1, t: 0.3 });
+  ev(st, 'objeto', o.tipo);
   const arma = ARMAS.indexOf(tipo);
   if (arma > 0) { p.arma = arma; p.arpones.length = 0; p.espera = 0; return; }
   if (tipo === 'velocidad') p.rapido = RAPIDO_SEG;
   else if (tipo === 'escudo') p.escudo = true;
-  else if (tipo === 'dinamita') dinamita(st);
-  else if (tipo === 'reloj') st.congelado = RELOJ_SEG;
+  else if (tipo === 'dinamita') { dinamita(st); ev(st, 'dinamita'); }
+  else if (tipo === 'reloj') { st.congelado = RELOJ_SEG; ev(st, 'reloj'); }
 }
 
 /** Guarda la posición del tick anterior (ax, ay, atop) para que el dibujo pueda

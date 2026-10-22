@@ -11,6 +11,7 @@ src/
   net/sala.js            # sala online compartida: código, directa/MQTT, secuencias y retardo (§5)
   net/ice.js             # servidores STUN (y TURN en el futuro) para la conexión directa
   pantalla/orientacion.js # vigilarOrientacion(id): capa "Gira el móvil" según el registro (§7)
+  audio/sintetizador.js  # crearAudio(recetas): sonidos con Web Audio y silencio común (D-011)
 juegos/
   registro.js            # lista de juegos del menú (§3)
   <id>/

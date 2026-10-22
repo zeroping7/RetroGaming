@@ -87,3 +87,11 @@ Una entrada por decisión. Nunca se borran; si cambian, se añade una nueva que 
 - Decisión: `specs/<id-juego>/NNN-nombre/` (y `specs/plataforma/` para lo común). Cada ampliación de un juego es una spec nueva dentro de su carpeta; la spec original describe el juego tal como se hizo. La numeración NNN sigue siendo global.
 - Alternativas descartadas: ampliar la spec original (mezcla lo hecho con lo pendiente en una sola carpeta de tareas); numeración por juego (dos "T011 de 001" posibles).
 - Consecuencias: el código ya estaba en `juegos/<id>/`; ahora las specs siguen el mismo orden.
+
+## D-011 — Sonido generado con Web Audio
+- Fecha: 2026-10-22
+- Estado: Aceptada
+- Contexto: Revienta Burbujas necesitaba efectos de sonido (spec 003) y el proyecto no usa build ni assets con licencia dudosa (AR2).
+- Decisión: todos los sonidos se sintetizan en el navegador con Web Audio (`src/audio/sintetizador.js`, común a los juegos). Cada juego define sus recetas; `sim.js` solo anota eventos (`st.eventos`) y la página los hace sonar. Silencio común guardado en `rg-silencio`.
+- Alternativas descartadas: archivos de audio (pesan, hay que cachearlos y vigilar licencias); librerías como Howler o jsfxr (dependencia más para algo pequeño).
+- Consecuencias: sonido retro «de chip», sin música por ahora. En online los eventos viajan en la instantánea (campo `e`).

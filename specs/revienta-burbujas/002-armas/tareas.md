@@ -14,7 +14,7 @@
   - Probar en el móvil: jugar un nivel; debe sentirse igual que antes
 
 ## Fase 1 — Objetos y armas
-- [ ] T010 — Objetos que caen
+- [x] T010 — Objetos que caen *(v0.6.0)*
   - Hecho cuando: 1 de cada 8 burbujas deja un objeto (máx. 2); cae, espera 10 s en el suelo (parpadea los 2 últimos) y desaparece; al recogerlo da +100 (su efecto llega en las tareas siguientes)
   - Probar en el móvil: jugar hasta que caiga uno; cogerlo y dejar otro sin coger
 - [ ] T011 — Arpón doble, espera entre disparos y perder el arma al morir

@@ -1,9 +1,41 @@
 // Dibujo de Revienta Burbujas en canvas 2D. Solo lee el estado: nunca lo cambia.
-import { W, H, FLOOR, R } from './sim.js';
+import { W, H, FLOOR, R, TIPOS, TAM_OBJETO, OBJ_EN_SUELO, OBJ_PARPADEO } from './sim.js';
 
 const COL = ['', '#ff6fae', '#5ee6c2', '#6fa8ff', '#ff7a4d'];
 const PCOL = [{ body: '#2ec4b6', hat: '#e94f37', shot: '#ffcf3a' }, { body: '#ff8fc7', hat: '#7b5cff', shot: '#ff8fc7' }];
 const FUENTE = '"Press Start 2P", monospace';
+
+// Objetos: un color de fondo por tipo (mismo orden que TIPOS) y un símbolo dibujado con formas
+const OBJ_COL = { doble: '#ffcf3a', fijo: '#5ee6c2', triple: '#ff8fc7', velocidad: '#6fa8ff', escudo: '#b79bff', dinamita: '#ff6b4a', reloj: '#f4f1ff' };
+const TINTA = '#1a1640';
+
+function simbolo(x, tipo, cx, cy) {
+  x.strokeStyle = TINTA; x.fillStyle = TINTA; x.lineWidth = 2; x.lineCap = 'butt';
+  const linea = (x1, y1, x2, y2) => { x.beginPath(); x.moveTo(x1, y1); x.lineTo(x2, y2); x.stroke(); };
+  switch (tipo) {
+    case 'doble': linea(cx - 3, cy - 5, cx - 3, cy + 5); linea(cx + 3, cy - 5, cx + 3, cy + 5); break;
+    case 'triple': linea(cx - 4, cy - 5, cx - 4, cy + 5); linea(cx, cy - 5, cx, cy + 5); linea(cx + 4, cy - 5, cx + 4, cy + 5); break;
+    case 'fijo': x.fillRect(cx - 2, cy - 4, 4, 9); x.fillRect(cx - 5, cy - 6, 10, 3); break;
+    case 'velocidad':
+      x.beginPath(); x.moveTo(cx - 5, cy); x.lineTo(cx, cy - 5); x.lineTo(cx + 5, cy); x.stroke();
+      x.beginPath(); x.moveTo(cx - 5, cy + 5); x.lineTo(cx, cy); x.lineTo(cx + 5, cy + 5); x.stroke(); break;
+    case 'escudo': x.beginPath(); x.arc(cx, cy, 5, 0, 7); x.stroke(); break;
+    case 'dinamita': x.fillRect(cx - 2, cy - 3, 4, 9); linea(cx, cy - 3, cx + 3, cy - 6); break;
+    case 'reloj': x.beginPath(); x.arc(cx, cy, 5, 0, 7); x.stroke(); linea(cx, cy, cx, cy - 3); linea(cx, cy, cx + 3, cy); break;
+  }
+}
+
+function dibujarObjeto(x, o, cx, cy) {
+  // parpadea los últimos segundos en el suelo
+  if (o.enSuelo > OBJ_EN_SUELO - OBJ_PARPADEO && Math.floor(o.enSuelo * 8) % 2) return;
+  const tipo = TIPOS[o.tipo], m = TAM_OBJETO / 2;
+  x.fillStyle = OBJ_COL[tipo];
+  x.beginPath();
+  if (x.roundRect) x.roundRect(cx - m, cy - m, TAM_OBJETO, TAM_OBJETO, 4); else x.rect(cx - m, cy - m, TAM_OBJETO, TAM_OBJETO);
+  x.fill();
+  x.strokeStyle = '#0d0b1f'; x.lineWidth = 1; x.stroke();
+  simbolo(x, tipo, cx, cy);
+}
 
 /**
  * @typedef {Object} Vista
@@ -66,6 +98,7 @@ export function dibujar(x, st, v) {
     x.strokeStyle = COL[q.s]; x.lineWidth = 2;
     x.beginPath(); x.arc(q.x, q.y, Math.max(1, R[q.s] * (1.6 - q.t * 2)), 0, 7); x.stroke();
   }
+  if (st.objetos) for (const o of st.objetos) dibujarObjeto(x, o, o.x, L(o.ay, o.y));
   const yo = v.modo === 'guest' ? 1 : v.modo === 'host' ? 0 : -1;
   st.ps.forEach((p, i) => {
     if (st.state === 'dead' && st.hit === i && Math.floor(st.t * 10) % 2) return;

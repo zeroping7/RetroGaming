@@ -32,9 +32,9 @@ Los objetos son iconos pequeños que caen desde donde estalló la burbuja, al to
 
 ## 5. Historias de usuario
 **HU-1 — Encontrar objetos.** Como jugador, quiero que a veces caiga un objeto al reventar una burbuja para tener ayudas.
-- [ ] Dado que reviento una burbuja, cuando toca, entonces cae un objeto que puedo ver y reconocer.
-- [ ] Dado un objeto en el suelo, cuando paso por encima, entonces se aplica su efecto y desaparece.
-- [ ] Dado un objeto en el suelo que nadie recoge, cuando pasan 10 s, entonces desaparece (parpadea los últimos 2 s).
+- [x] Dado que reviento una burbuja, cuando toca, entonces cae un objeto que puedo ver y reconocer.
+- [x] Dado un objeto en el suelo, cuando paso por encima, entonces se aplica su efecto y desaparece.
+- [x] Dado un objeto en el suelo que nadie recoge, cuando pasan 10 s, entonces desaparece (parpadea los últimos 2 s).
 
 **HU-2 — Cambiar de arma.** Como jugador, quiero recoger armas distintas para cubrir más pantalla.
 - [ ] Dado el arpón doble, cuando disparo dos veces seguidas, entonces veo dos arpones a la vez.

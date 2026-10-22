@@ -42,6 +42,8 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 .hint{font-size:8px;color:var(--muted);margin:0;text-align:center;line-height:1.7}
 #share{position:absolute;bottom:24%;left:50%;transform:translateX(-50%);font:inherit;font-size:10px;padding:14px 18px;border:0;border-radius:10px;background:var(--accent);color:#2a1b00;cursor:pointer;white-space:nowrap}
 #snd{position:absolute;top:5px;right:64px;z-index:2;font-size:16px;line-height:1;padding:6px 8px;border:0;border-radius:6px;background:rgba(0,0,0,.4);color:var(--fg);cursor:pointer}
+#pausa i{display:inline-block;width:4px;height:14px;background:currentColor;margin:0 2px;vertical-align:middle}
+#pausa{position:absolute;top:5px;right:110px;z-index:2;font-size:16px;line-height:1;padding:7px 8px;border:0;border-radius:6px;background:rgba(0,0,0,.4);color:var(--fg);cursor:pointer}
 #quit{position:absolute;top:8px;right:8px;font:inherit;font-size:8px;padding:8px;border:0;border-radius:6px;background:rgba(0,0,0,.4);color:var(--fg);cursor:pointer}
 @media (hover:hover) and (pointer:fine){#pads{display:none}}
 </style>
@@ -51,6 +53,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
   <canvas id="c" width="400" height="560"></canvas>
   <button id="quit" hidden>SALIR</button>
   <button id="snd" aria-label="Sonido"></button>
+  <button id="pausa" aria-label="Pausa" hidden><i></i><i></i></button>
   <button id="share" hidden>COMPARTIR ENLACE</button>
   <div class="menu" id="menu">
     <h1>REVIENTA<br>BURBUJAS</h1>
@@ -84,6 +87,7 @@ import { W, VEL_JUGADOR, crear, paso, moverBurbujas, moverObjetos, disparar, mov
 import { dibujar } from './render.js';
 import { crearAudio } from '../../src/audio/sintetizador.js';
 import { RECETAS } from './sonidos.js';
+import { crearPausa } from '../../src/pantalla/pausa.js';
 
 const cv=document.getElementById('c'),x=cv.getContext('2d'),$=id=>document.getElementById(id);
 const keys=[{l:false,r:false,f:false},{l:false,r:false,f:false}];
@@ -106,13 +110,54 @@ function sonar(lista,yo=-1){
   }
 }
 
+/* ---------- pausa (HU-7 de 000): 0 no, 1 J1 / local, 2 J2 (invitado), 3 sin conexión con el invitado ---------- */
+let pausa=0,pausaRed=0,pedidoN=0,pedidoV=false,ultimoPn=0,pausaPintada='';
+const pantallaPausa=crearPausa({alContinuar:()=>pedirPausa(false),alSalir:()=>{pantallaPausa.ocultar();toMenu()}});
+function enPartida(){
+  if(mode==='local')return true;
+  if(mode==='host')return !!st.ps;
+  if(mode==='guest')return !!gview&&!!heardAt;
+  return false;
+}
+function pausaActual(){return mode==='guest'?pausaRed:pausa}
+// Pausar o seguir. Online la decide el anfitrión: el invitado se lo pide con un contador
+// que va subiendo (pn), así su petición llega aunque se pierda algún mensaje.
+function pedirPausa(v){
+  if(!enPartida())return;
+  if(mode==='local'||mode==='host'){
+    if(pausa===3)return; // esperando al invitado: no se puede seguir
+    pausa=v?1:0;
+    if(mode==='host'){sendAcc=1;sendState(0)} // que el invitado lo sepa ya
+  }else if(mode==='guest'){
+    if(pausaRed===3)return;
+    pedidoN++;pedidoV=v;if(sala)sendIn();
+  }
+  pintarPausa();
+}
+function pintarPausa(){
+  const pz=enPartida()?pausaActual():0,clave=mode+pz;
+  if(clave===pausaPintada)return;pausaPintada=clave;
+  if(!pz){pantallaPausa.ocultar();return}
+  const yo=mode==='guest'?2:1;
+  if(pz===3)pantallaPausa.mostrar('PAUSA',mode==='host'?'Esperando a tu compañero…':'Reconectando…',false);
+  else if(mode==='local')pantallaPausa.mostrar('PAUSA');
+  else pantallaPausa.mostrar('PAUSA',pz===yo?'Has pausado tú':'Ha pausado tu compañero');
+}
+$('pausa').onclick=e=>{e.stopPropagation();pedirPausa(true);$('pausa').blur()};
+addEventListener('keydown',e=>{
+  if(e.target&&e.target.tagName==='INPUT')return;
+  if((e.key==='Escape'||e.key==='p'||e.key==='P')&&enPartida()){pedirPausa(!pausaActual());e.preventDefault()}
+});
+// Al salir de la app, bloquear el móvil o cambiar de pestaña: pausa
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pedirPausa(true)});
+
 /* ---------- partida: las reglas están en sim.js ---------- */
 const ent=[{left:false,right:false,a:false,x:undefined},{left:false,right:false,a:false,x:undefined}]; // reutilizadas (R5)
 // Modo de prueba: ?objetos=doble,fijo (o ?objetos=todos) hace que caiga siempre un objeto,
 // de esos tipos y por turnos. Solo lo usa quien simula (1-2 jugadores en el móvil o anfitrión).
 const PRUEBA=(()=>{const q=new URLSearchParams(location.search).get('objetos');if(!q)return null;
   const l=q==='todos'?TIPOS.slice():q.split(',').map(t=>t.trim().toLowerCase()).filter(t=>TIPOS.includes(t));return l.length?l:null})();
-function newGame(n){st=crear(n,undefined,{prueba:PRUEBA});for(const k of keys){k.l=k.r=k.f=false}guestX=null;ronda=st.ronda}
+function newGame(n){st=crear(n,undefined,{prueba:PRUEBA});pausa=0;for(const k of keys){k.l=k.r=k.f=false}guestX=null;ronda=st.ronda}
 function update(dt){
   for(let i=0;i<st.n;i++){
     const k=mode==='host'&&i===1?guestIn:keys[i],e=ent[i];
@@ -136,12 +181,13 @@ function update(dt){
 
 /* ---------- red (src/net/sala.js): el anfitrión simula, el invitado envía mandos y dibuja ---------- */
 let sala=null,heardAt=0,helloAt=0,joinStart=0,netGen=0;
-function closeNet(){netGen++;pendRed.length=0;if(sala){sala.cerrar();sala=null}hostState=null;heardAt=0;gview=null;lastSnap=-1;guestX=null;lat=0.15}
+function closeNet(){netGen++;pendRed.length=0;pausa=0;pausaRed=0;pedidoN=Date.now();ultimoPn=0;if(sala){sala.cerrar();sala=null}hostState=null;heardAt=0;gview=null;lastSnap=-1;guestX=null;lat=0.15}
 function enterOnline(asHost,c){code=c;mode=asHost?'host':'guest';st={state:'wait'};hideMenus();$('pad2').hidden=true;$('quit').hidden=false}
 function netInfo(){return sala?(sala.via==='directa'?'DIRECTA':sala.servidores()):''}
 function onMsg(tp,d){
-  if(mode==='host'&&tp==='in'){heardAt=performance.now();guestIn={l:!!d.l,r:!!d.r,f:!!d.f};guestX=typeof d.x==='number'&&isFinite(d.x)?d.x:null;guestXAt=performance.now();guestDir=Math.max(-1,Math.min(1,d.d|0));guestLat=sala.retardo/2000}
-  if(mode==='guest'&&tp==='st'){heardAt=performance.now();hostState=d}
+  if(mode==='host'&&tp==='in'){heardAt=performance.now();guestIn={l:!!d.l,r:!!d.r,f:!!d.f};guestX=typeof d.x==='number'&&isFinite(d.x)?d.x:null;guestXAt=performance.now();guestDir=Math.max(-1,Math.min(1,d.d|0));guestLat=sala.retardo/2000;
+    if(typeof d.pn==='number'&&d.pn>ultimoPn){ultimoPn=d.pn;if(pausa!==3)pausa=d.pv?2:0}}
+  if(mode==='guest'&&tp==='st'){heardAt=performance.now();hostState=d;pausaRed=Math.max(0,Math.min(3,d.pz|0))}
 }
 // Abre la sala (sin código = crear partida nueva). Si mientras tanto se vuelve al menú, se cierra.
 async function openSala(c,asHost,onFail){
@@ -161,11 +207,16 @@ function joinGame(c){
   const m=$('jmsg');m.className='';m.textContent='Entrando…';code=c;
   openSala(c,false,t=>{m.className='err';m.textContent=t}).then(s=>{if(s){enterOnline(false,c);joinStart=performance.now();lastSent=''}});
 }
-function sendIn(){const k=keys[0];const m={l:k.l,r:k.r,f:k.f};if(gview&&gview.ps&&gview.ps[1]&&gview.state==='play'){m.x=Math.round(gview.ps[1].x);m.d=(k.r?1:0)-(k.l?1:0)}sala.enviar('in',m)}
+function sendIn(){const k=keys[0];const m={l:k.l,r:k.r,f:k.f,pn:pedidoN,pv:pedidoV?1:0};if(gview&&gview.ps&&gview.ps[1]&&gview.state==='play'){m.x=Math.round(gview.ps[1].x);m.d=(k.r?1:0)-(k.l?1:0)}sala.enviar('in',m)}
 function netTick(dt){
   const now=performance.now();
   if(mode==='host'){
-    if(!heardAt||now-heardAt>4000){if(st.state!=='wait')st={state:'wait'};guestIn={l:false,r:false,f:false};return false}
+    if(!heardAt||now-heardAt>4000){
+      guestIn={l:false,r:false,f:false};
+      if(st.ps){pausa=3;return false} // partida empezada: se guarda en pausa hasta que vuelva
+      if(st.state!=='wait')st={state:'wait'};return false;
+    }
+    if(pausa===3)pausa=2; // ha vuelto: queda en pausa (de J2) hasta que alguien siga
     if(st.state==='wait')newGame(2);
     return true;
   }
@@ -209,6 +260,7 @@ function guestStep(dt){
     }
   }
   const v=gview;if(!v||!v.ps||v.ps.length<2)return;
+  if(pausaRed)return; // en pausa no se predice nada
   if(v.state!=='play'){v.t-=dt;return}
   const me=v.ps[1],k=keys[0];
   if(k.l)me.x-=VEL_JUGADOR*dt;if(k.r)me.x+=VEL_JUGADOR*dt;me.x=Math.max(13,Math.min(W-13,me.x));
@@ -220,12 +272,14 @@ function guestStep(dt){
   moverObjetos(v.objetos,dt);
   v.pop=v.pop.filter(q=>(q.t-=dt)>0);
 }
-function sendState(dt){sendAcc+=dt;if(sendAcc<1/25||!sala)return;sendAcc=0;const e=codificar(st);if(pendRed.length){e.e=pendRed.slice(0,64);pendRed.length=0}sala.enviar('st',e)}
+function sendState(dt){sendAcc+=dt;if(sendAcc<1/25||!sala)return;sendAcc=0;const e=codificar(st);e.pz=pausa;if(pendRed.length){e.e=pendRed.slice(0,64);pendRed.length=0}sala.enviar('st',e)}
 
 /* ---------- dibujo: render.js ---------- */
 const vista={modo:'menu',alfa:1,codigo:'',red:'',servidores:'',record:0,ahora:0}; // reutilizada (R5)
 function draw(){
   const sh=$('share'),ver=mode==='host'&&st.state==='wait';if(sh.hidden===ver)sh.hidden=!ver;
+  const bp=$('pausa'),vp=enPartida();if(bp.hidden===vp)bp.hidden=!vp;
+  pintarPausa();
   vista.modo=mode;vista.alfa=mode==='guest'?1:alfa;vista.codigo=code;vista.record=best;vista.ahora=performance.now();
   vista.servidores=netInfo();vista.red=vista.servidores+(sala&&sala.retardoMedido?'  '+Math.round(sala.retardo)+'ms':'');
   dibujar(x,st,vista);
@@ -234,7 +288,7 @@ function draw(){
 /* ---------- menús ---------- */
 function hideMenus(){$('menu').hidden=true;$('join').hidden=true}
 function toMenu(){
-  closeNet();mode='menu';st={state:'menu'};
+  closeNet();mode='menu';st={state:'menu'};pantallaPausa.ocultar();pausaPintada='';
   $('menu').hidden=false;$('join').hidden=true;$('pad2').hidden=true;$('quit').hidden=true;$('mmsg').textContent='';
 }
 function startLocal(n){mode='local';newGame(n);hideMenus();$('pad2').hidden=n<2;$('quit').hidden=false}
@@ -255,7 +309,7 @@ $('share').onclick=async()=>{
   setTimeout(()=>{b.textContent='COMPARTIR ENLACE'},2000);
 };
 // Se juega en vertical: si el móvil está en horizontal, aviso "Gira el móvil" (HU-10)
-import('../../src/pantalla/orientacion.js').then(m=>m.vigilarOrientacion('revienta-burbujas')).catch(()=>{});
+import('../../src/pantalla/orientacion.js').then(m=>m.vigilarOrientacion('revienta-burbujas',{alCambiar:ok=>{if(!ok)pedirPausa(true)}})).catch(()=>{});
 // Entrar con un enlace ?sala=CODIGO: directo a unirse, sin escribirlo
 import('../../src/net/sala.js').then(net=>{const c=net.codigoDeUrl();if(!c)return;
   $('menu').hidden=true;$('join').hidden=false;$('code').value=c;closeNet();joinGame(c)}).catch(()=>{});
@@ -271,7 +325,10 @@ function pollPads(){
   let gps=[];try{gps=navigator.getGamepads?[...navigator.getGamepads()].filter(p=>p&&p.connected):[]}catch(e){return}
   gps.slice(0,2).forEach((g,i)=>{
     const ax=g.axes[0]||0,bt=j=>!!(g.buttons[j]&&g.buttons[j].pressed);
-    const now={l:ax<-.4||bt(14),r:ax>.4||bt(15),f:bt(0)||bt(1)||bt(2)||bt(3)||bt(9)};
+    const now={l:ax<-.4||bt(14),r:ax>.4||bt(15),f:bt(0)||bt(1)||bt(2)||bt(3),s:bt(9)};
+    // Start: pausa / sigue. En pausa, A también sigue
+    if(now.s&&!prev[i].s&&enPartida())pedirPausa(!pausaActual());
+    else if(now.f&&!prev[i].f&&pausaActual()&&pausaActual()!==3)pedirPausa(false);
     const slot=mode==='local'?i:0;
     if(mode!=='menu'&&(mode==='local'||i===0))for(const k of['l','r','f'])if(now[k]!==prev[i][k])keys[slot][k]=now[k];
     prev[i]=now;
@@ -289,12 +346,12 @@ function loop(t){
     acc+=dt;let n=0;
     while(acc>=TICK&&n<MAX_TICKS){
       acc-=TICK;n++;
-      if(mode==='local')update(TICK);
-      else if(mode==='host'){if(netTick(TICK)){update(TICK);sendState(TICK)}}
+      if(mode==='local'){if(!pausa)update(TICK)}
+      else if(mode==='host'){if(netTick(TICK)){if(!pausa)update(TICK);sendState(TICK)}}
       else break; // se volvió al menú durante los ticks
     }
     if(n===MAX_TICKS)acc=0; // el móvil va muy lento: mejor ir más lento que dar saltos
-    alfa=acc/TICK;
+    alfa=pausa?1:acc/TICK; // en pausa no se interpola (si no, temblaría)
   }else{
     acc=0;alfa=1;
     // el invitado no simula: dibuja lo que recibe más su predicción, con el tiempo real

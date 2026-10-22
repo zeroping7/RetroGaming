@@ -22,7 +22,7 @@
 - [ ] T013 — Navegación con mando en el menú de Revienta Burbujas (C3)
 
 ## Fase 2 — Según respuestas de la spec
-- [ ] T020 — Pausa común (HU-7)
+- [x] T020 — Pausa común (HU-7, plan §8) *(v0.9.0)*
 - [ ] T021 — Aviso de código de otro juego (HU-5)
 - [x] T022 — Enlace para compartir la partida (HU-9, plan §6; tras T011) *(v0.4.1)*
   - Hecho cuando: el invitado entra en una partida de Revienta Burbujas tocando el enlace, sin escribir el código.

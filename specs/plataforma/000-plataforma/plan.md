@@ -59,3 +59,10 @@ sala.retardo;  // ida y vuelta medido, en ms
 - Si el móvil no está en la orientación del juego, una capa "Gira el móvil" tapa la pantalla (y pausa, cuando exista T020). Se detecta con `matchMedia('(orientation: …)')`.
 - No se usa `screen.orientation.lock()`: solo funciona en pantalla completa y no existe en iOS.
 - En la app ya instalada, Chrome tarda en aplicar el manifest nuevo; desinstalar y reinstalar lo fuerza.
+
+## 8. Pausa (HU-7)
+- `src/pantalla/pausa.js`: `crearPausa({ alContinuar, alSalir })` → capa con «CONTINUAR» y «SALIR» (`mostrar(titulo, detalle, puedeContinuar)`, `ocultar()`). Solo es visual; cada juego decide cuándo pausar.
+- Se abre con el botón ⏸, `Esc` o `P`, `Start` del mando (y `A` continúa), al ocultarse la página (`visibilitychange`) y cuando `vigilarOrientacion` avisa de que el móvil está mal girado.
+- La simulación no avanza en pausa (el bucle de paso fijo no llama a `paso`) y el dibujo no interpola.
+- **Online:** la decide el anfitrión y la manda en cada instantánea (`pz`: 0 no, 1 J1, 2 J2, 3 sin conexión). El invitado la pide con un contador creciente (`pn`) y el valor deseado (`pv`) en sus mensajes, así llega aunque se pierda alguno. Cualquiera de los dos puede seguir.
+- Si el invitado deja de oírse 4 s con la partida empezada, el anfitrión la guarda en pausa 3 («Esperando a tu compañero…»); cuando vuelve, queda en pausa de J2 hasta que alguien pulse «Continuar».

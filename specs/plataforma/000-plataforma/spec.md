@@ -40,7 +40,9 @@ Abrir la web desde cualquier dispositivo, elegir un juego como en una consola re
 - [ ] En el menú de cada juego también funciona el mando (constitución C3).
 
 **HU-7 — Pausa.** Como jugador, quiero pausar sin perder la partida.
-- [ ] `Start` / `Esc` / ☰ abre una pausa con "Continuar" y "Salir"; online, pausa a los dos.
+- [x] `Start` / `Esc` / `P` / botón ⏸ abre una pausa con "Continuar" y "Salir"; online, pausa a los dos y se ve quién la ha pausado.
+- [x] Se pausa sola al salir de la app, bloquear el móvil o girarlo al revés.
+- [x] Online, si el invitado se desconecta con la partida empezada, el anfitrión la guarda en pausa hasta que vuelve.
 
 **HU-8 — Corte de conexión.**
 - [x] Si se deja de recibir 4 s, ambos ven "Esperando…" hasta que vuelve.

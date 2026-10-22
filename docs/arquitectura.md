@@ -12,6 +12,7 @@ src/
   net/ice.js             # servidores STUN (y TURN en el futuro) para la conexión directa
   pantalla/orientacion.js # vigilarOrientacion(id): capa "Gira el móvil" según el registro (§7)
   audio/sintetizador.js  # crearAudio(recetas): sonidos con Web Audio y silencio común (D-011)
+  pantalla/pausa.js      # crearPausa(): capa de pausa común (plan de 000, §8)
 juegos/
   registro.js            # lista de juegos del menú (§3)
   <id>/
@@ -60,7 +61,7 @@ Opciones según el registro: **1 jugador**, **2 jugadores** (mismo dispositivo),
 - El anfitrión ve el código en grande y espera; cuando llega el invitado, la partida empieza sola.
 - El invitado escribe el código; si en 15 s no hay respuesta: "No hay ninguna partida con ese código".
 - **Enlace (D-008):** mientras espera, el anfitrión ve "COMPARTIR ENLACE" (`navigator.share`, o copiar si no existe). `juegos/<id>/?sala=CODIGO` entra directo como invitado; `enlaceDePartida()` y `codigoDeUrl()` están en `src/net/sala.js`.
-- Si se deja de recibir durante 4 s, ambos pasan a "Esperando…" hasta que vuelve la conexión.
+- Si se deja de recibir durante 4 s, ambos pasan a "Esperando…" hasta que vuelve la conexión; si la partida ya había empezado, el anfitrión la guarda en pausa (plan de 000, §8).
 
 ## 5. Online en tiempo real
 **Transporte:**

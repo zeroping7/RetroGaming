@@ -43,7 +43,7 @@ Mirar el color actual y el siguiente → girar el cañón → disparar (directo 
 | Entidad | Comportamiento | Interacción |
 |---|---|---|
 | Cañón | gira entre los límites; muestra la burbuja actual y, al lado, la siguiente | dispara la actual; la siguiente pasa a actual |
-| Mascota (J1 turquesa, J2 rosa) | bichito redondo original junto al cañón: gira la manivela, salta al hacer una gran caída, se lamenta al perder | solo decorativa |
+| Mascota (J1 turquesa, J2 rosa) | gato junto al cañón (diseño según las imágenes del usuario): gira la manivela, salta al hacer una gran caída, se lamenta al perder | solo decorativa |
 | Burbuja de color | en rejilla hexagonal (filas alternas de 8 y 7) pegada al techo | ver reglas §6.1 |
 | Burbuja disparada | va recta a velocidad fija, rebota en las paredes laterales | se pega en el hueco libre más cercano al tocar otra burbuja o el techo |
 | Techo | baja una fila cada N disparos (tiembla los 2 disparos previos) | empuja todo el tablero hacia abajo |
@@ -57,7 +57,7 @@ Mirar el color actual y el siguiente → girar el cañón → disparar (directo 
 - **Prisa:** si no disparas en 10 s, el cañón dispara solo; los últimos 5 s se ve una cuenta atrás.
 - **Techo:** baja cada 8 disparos en el nivel 1, y cada vez antes en niveles altos (mínimo cada 5).
 - **Bonus de tiempo** al limpiar: más puntos cuanto más rápido (≤ 5 s: 50.000; ≤ 60 s: 0, en escala).
-- **Guía de puntería:** línea punteada hasta el primer rebote (ver pregunta abierta).
+- **Guía de puntería:** línea punteada hasta el primer rebote, siempre visible.
 - **8 colores** posibles; los primeros niveles usan 3-4 y los últimos hasta 8.
 
 ### 6.2 Versus
@@ -92,7 +92,7 @@ Mirar el color actual y el siguiente → girar el cañón → disparar (directo 
 
 ## 10. Arte y sonido
 - **Estilo:** formas planas con paleta común (AR3), greybox primero (AR1). Burbujas con brillo y un símbolo distinto por color (para daltónicos).
-- **Portada del cartucho:** mascota junto al cañón apuntando a un techo de burbujas de colores; sin texto.
+- **Portada del cartucho:** gato junto al cañón apuntando a un techo de burbujas de colores; sin texto.
 - **Sonido** (Web Audio, D-011): disparo, rebote en pared, pegar, explotar, caer (cascada más larga cuanto más caen), techo tiembla y baja, cuenta atrás, nivel limpio, perder, ronda ganada, basura enviada/recibida. Sin música.
 
 ## 11. Historias de usuario
@@ -132,7 +132,7 @@ Mirar el color actual y el siguiente → girar el cañón → disparar (directo 
 - Apuntar arrastrando el dedo.
 
 ## 13. Preguntas abiertas
-- [ ] ¿Guía de puntería? Propuesta: siempre hasta el primer rebote (en móvil con botones ayuda mucho). Alternativa: solo en los 5 primeros niveles.
-- [ ] ¿Récords también en VS CPU (rival alcanzado)? Propuesta: no en v1.
-- [ ] ¿Mascota? Propuesta: bichito redondo con dos antenas cortas; ¿prefieres otro animal (pulpo, topo, rana…)?
+- [x] ¿Guía de puntería? → Siempre, hasta el primer rebote.
+- [x] ¿Récords también en VS CPU? → No en v1.
+- [ ] ¿Mascota? → Gatos, a partir de las imágenes que pasará el usuario (pendiente de recibirlas).
 - [ ] ¿Valores de §6.1 (10 s para disparar, techo cada 8 disparos, 8 rivales CPU) te valen?

@@ -103,3 +103,19 @@ Una entrada por decisión. Nunca se borran; si cambian, se añade una nueva que 
 - Decisión: `sim.js` guarda en `st.mejor` lo mejor que se llegó a tener antes de cada «¿continuar?» (puntos y fase), y eso es lo que se ofrece para la tabla al final. Va en la instantánea (`mp`, `mf`) para que el invitado guarde el suyo.
 - Alternativas descartadas: pedir las iniciales en cada «¿continuar?» (corta el ritmo y llena la tabla de la misma partida); sumar todos los tramos (premiaría continuar sin límite).
 - Consecuencias: una partida da como mucho una entrada en la tabla.
+
+## D-013 — Lanza Burbujas: Phaser solo dibuja; menús en HTML
+- Fecha: 2026-10-23
+- Estado: Aceptada
+- Contexto: primer juego nuevo después de la constitución (P3: Phaser 3.90 para juegos nuevos). Los menús de Revienta Burbujas ya están hechos en HTML y se navegan con mando (C3).
+- Decisión: Phaser dibuja la partida (`render.js`), sin su sistema de entradas ni de sonido: las acciones salen de `src/input/entradas.js`, el sonido de `src/audio/` y los menús, la pausa y los récords son HTML con el mismo estilo que Revienta Burbujas. El juego se dibuja a 1280×720 con la cámara ×2 sobre coordenadas 640×360, y los textos a doble tamaño con escala 0,5, para que se vean nítidos al escalar con WebGL y con canvas. `?canvas=1` fuerza el renderizador canvas (móviles con problemas de gráficos y pruebas automáticas). El paso fijo usa el tiempo real entre fotogramas, no el de Phaser (que lo suaviza y, en un móvil lento, haría ir el juego a cámara lenta).
+- Alternativas descartadas: escenas y menús de Phaser (habría que rehacer la navegación con mando y la pausa común); canvas 2D sin Phaser como Revienta Burbujas (lo impide P3 sin excepción).
+- Consecuencias: Phaser (1,2 MB) solo se descarga al entrar en el juego (R4). Sin teñido en canvas: lo que se pierde, además de gris, se dibuja medio transparente.
+
+## D-014 — `?debug=1` y `?lag=&loss=` (constitución Q1 y Q2)
+- Fecha: 2026-10-23
+- Estado: Aceptada
+- Contexto: Q1 y Q2 estaban en la constitución pero ningún juego los tenía.
+- Decisión: el retardo y la pérdida simulados viven en `src/net/sala.js` (sirven a todos los juegos y el retardo medido los incluye); la sala cuenta los bytes enviados y recibidos. Cada juego pinta su `?debug=1`; Lanza Burbujas es el primero (FPS, tick, rol, ms, KB/s y vía).
+- Alternativas descartadas: simularlo en cada juego envolviendo la sala (el retardo medido no lo vería).
+- Consecuencias: Revienta Burbujas ya puede usar `?lag=&loss=`; le falta su `?debug=1`.

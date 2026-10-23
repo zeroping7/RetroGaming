@@ -1,6 +1,7 @@
 # Spec: Lanza Burbujas
 
-> **ID:** 005-lanza-burbujas · **Estado:** En revisión · **Fecha:** 2026-10-23
+> **ID:** 005-lanza-burbujas · **Estado:** Implementada (v0.13.0) · **Fecha:** 2026-10-23
+> Aprobada por el usuario el 2026-10-23 («me valen así»), junto con el encargo de hacer el juego completo de una vez.
 > Esta spec describe QUÉ y POR QUÉ. Nada de código, archivos ni librerías.
 > Clon de las reglas clásicas del género «Puzzle Bobble», con diseño propio: niveles, mascota, fondos y gráficos inventados (AR2). No se usa material del juego original.
 
@@ -43,7 +44,7 @@ Mirar el color actual y el siguiente → girar el cañón → disparar (directo 
 | Entidad | Comportamiento | Interacción |
 |---|---|---|
 | Cañón | gira entre los límites; muestra la burbuja actual y, al lado, la siguiente | dispara la actual; la siguiente pasa a actual |
-| Mascota (J1 turquesa, J2 rosa) | gato junto al cañón (diseño según las imágenes del usuario): gira la manivela, salta al hacer una gran caída, se lamenta al perder | solo decorativa |
+| Mascota | gatos del usuario en pixel art: J1 = gato atigrado con pecho blanco (collar turquesa), J2 = gata tricolor (collar rosa). Junto al cañón: gira la manivela, salta al hacer una gran caída, se lamenta al perder | solo decorativa |
 | Burbuja de color | en rejilla hexagonal (filas alternas de 8 y 7) pegada al techo | ver reglas §6.1 |
 | Burbuja disparada | va recta a velocidad fija, rebota en las paredes laterales | se pega en el hueco libre más cercano al tocar otra burbuja o el techo |
 | Techo | baja una fila cada N disparos (tiembla los 2 disparos previos) | empuja todo el tablero hacia abajo |
@@ -67,7 +68,7 @@ Mirar el color actual y el siguiente → girar el cañón → disparar (directo 
 - Entre rondas: marcador (●○), 3 s y siguiente ronda. Al acabar: «REVANCHA» o «MENÚ».
 
 ### 6.3 VS CPU
-- Serie de **8 rivales CPU** (cada uno con su color de mascota); al ganar a uno pasas al siguiente. Ganar a los 8 = fin con bonus.
+- Serie de **8 rivales CPU** (cada uno con su color de mascota); al ganar a uno pasas al siguiente. Ganar a los 8 = pantalla de campeón. Los rivales son gatos de otros pelajes.
 - La CPU elige disparo como un jugador sencillo: busca grupos de su color, a veces usa rebotes, y falla a propósito más en los primeros rivales.
 
 ## 7. Niveles y progresión
@@ -97,31 +98,31 @@ Mirar el color actual y el siguiente → girar el cañón → disparar (directo 
 
 ## 11. Historias de usuario
 **HU-1 — Jugar un nivel.**
-- [ ] Dado el menú del juego, cuando pulso «1 JUGADOR», entonces empieza el nivel 1 con su tablero diseñado.
-- [ ] Dado que disparo y formo un grupo de 3+ del mismo color, entonces explotan y suman 10 cada una.
-- [ ] Dado que quedan burbujas sin unión al techo, entonces caen y suman el bonus doble.
-- [ ] Dado que disparo hacia una pared, entonces la burbuja rebota.
+- [x] Dado el menú del juego, cuando pulso «NIVELES» (1 jugador), entonces empieza el nivel 1 con su tablero diseñado.
+- [x] Dado que disparo y formo un grupo de 3+ del mismo color, entonces explotan y suman 10 cada una.
+- [x] Dado que quedan burbujas sin unión al techo, entonces caen y suman el bonus doble.
+- [x] Dado que disparo hacia una pared, entonces la burbuja rebota.
 
 **HU-2 — Presión.**
-- [ ] Dado que llevo N disparos, entonces el techo tiembla 2 disparos antes y luego baja una fila.
-- [ ] Dado que no disparo en 10 s, entonces el cañón dispara solo.
-- [ ] Dado que una burbuja cruza la línea de peligro, entonces pierdo y sale «¿continuar?».
+- [x] Dado que llevo N disparos, entonces el techo tiembla 2 disparos antes y luego baja una fila.
+- [x] Dado que no disparo en 10 s, entonces el cañón dispara solo.
+- [x] Dado que una burbuja cruza la línea de peligro, entonces pierdo y sale «¿continuar?».
 
 **HU-3 — Progresar.**
-- [ ] Dado que vacío el tablero, entonces recibo bonus de tiempo y paso al siguiente nivel; cada 5 cambia el mundo.
-- [ ] Dado que acabo el nivel 30 o pierdo sin continuar, entonces puedo dejar mis iniciales si entro en el top 10.
+- [x] Dado que vacío el tablero, entonces recibo bonus de tiempo y paso al siguiente nivel; cada 5 cambia el mundo.
+- [x] Dado que acabo el nivel 30 o pierdo sin continuar, entonces puedo dejar mis iniciales si entro en el top 10.
 
 **HU-4 — VS CPU.**
-- [ ] Dado «VS CPU», entonces juego al mejor de 3 contra el rival 1; al ganarle paso al 2, hasta el 8.
-- [ ] Dado que hago caer burbujas, entonces le llegan al rival como basura (y al revés).
+- [x] Dado «VS CPU», entonces juego al mejor de 3 contra el rival 1; al ganarle paso al 2, hasta el 8.
+- [x] Dado que hago caer burbujas, entonces le llegan al rival como basura (y al revés).
 
 **HU-5 — Versus online.**
-- [ ] Dado que creo partida y mi rival entra con el código o el enlace, entonces empieza el versus y ambos vemos los dos tableros iguales.
-- [ ] Dado que giro mi cañón, entonces se mueve al instante en mi móvil.
-- [ ] Dado el final, entonces podemos pedir revancha sin volver a meter el código.
+- [x] Dado que creo partida y mi rival entra con el código o el enlace, entonces empieza el versus y ambos vemos los dos tableros iguales.
+- [x] Dado que giro mi cañón, entonces se mueve al instante en mi móvil.
+- [x] Dado el final, entonces podemos pedir revancha sin volver a meter el código.
 
 **HU-6 — Controles.**
-- [ ] Dado táctil, teclado o mando, entonces puedo jugar entero y navegar los menús (C1, C3).
+- [x] Dado táctil, teclado o mando, entonces puedo jugar entero y navegar los menús (C1, C3).
 
 ## 12. Fuera de alcance (v1)
 - 2 jugadores en el mismo dispositivo.
@@ -134,5 +135,5 @@ Mirar el color actual y el siguiente → girar el cañón → disparar (directo 
 ## 13. Preguntas abiertas
 - [x] ¿Guía de puntería? → Siempre, hasta el primer rebote.
 - [x] ¿Récords también en VS CPU? → No en v1.
-- [ ] ¿Mascota? → Gatos, a partir de las imágenes que pasará el usuario (pendiente de recibirlas).
-- [ ] ¿Valores de §6.1 (10 s para disparar, techo cada 8 disparos, 8 rivales CPU) te valen?
+- [x] ¿Mascota? → Los dos gatos de las fotos del usuario: el atigrado es J1 y la tricolor J2.
+- [x] ¿Valores de §6.1 (10 s para disparar, techo cada 8 disparos, 8 rivales CPU)? → Sí.

@@ -21,6 +21,7 @@ juegos/
     icono.png            # favicon del juego (opcional)
     sim.js render.js tests.html   # estructura para juegos nuevos (constitución A1, Q3)
     fases.js records.js           # (Revienta Burbujas) fases diseñadas y tabla de récords
+    niveles.js cpu.js gatos.js    # (Lanza Burbujas) 30 niveles, rivales CPU y gatos en pixel art
 sw.js  manifest.webmanifest  icon-192.png  icon-512.png   # app instalable de todo el sitio
 docs/  CLAUDE.md
 specs/
@@ -74,7 +75,9 @@ Opciones según el registro: **1 jugador**, **2 jugadores** (mismo dispositivo),
 
 **Módulo:** todo lo genérico vive en `src/net/sala.js` (API en el plan de 000, §4). Los juegos lo cargan con `import('../../src/net/sala.js')`; la sala carga MQTT.js sola.
 
-**Temas MQTT:** `<id-juego>/v<versión-protocolo>/<CÓDIGO>/in` (invitado → anfitrión) y `/st` (anfitrión → invitado). Revienta Burbujas usa la versión 9 (mejoras arcade, spec 004: continuar y récords).
+**Temas MQTT:** `<id-juego>/v<versión-protocolo>/<CÓDIGO>/in` (invitado → anfitrión) y `/st` (anfitrión → invitado). Revienta Burbujas usa la versión 9 (mejoras arcade, spec 004: continuar y récords); Lanza Burbujas, la 1.
+
+**Pruebas y medidas (D-014):** `?lag=150&loss=5` hace que la sala retrase (la mitad al enviar y la otra mitad al recibir) y pierda mensajes, así que el retardo medido lo incluye. `sala.enviados` y `sala.recibidos` cuentan bytes para el `?debug=1` de cada juego.
 
 **Mensajes**
 - Invitado → anfitrión: `{n, l, r, f, ...}` — secuencia + estado de los botones. Se envía al cambiar algo y, además, cada 50 ms si se mueve o cada 500 ms si está quieto.
@@ -82,6 +85,8 @@ Opciones según el registro: **1 jugador**, **2 jugadores** (mismo dispositivo),
 - La sala añade a cada mensaje `n` (secuencia) y `_t`, `_e`, `_a` (retardo); los juegos no usan esos nombres.
 - Retardo: cada lado manda su hora (`_t`) y el otro la devuelve (`_e`) junto con cuánto tardó en contestar (`_a`). Así **los dos** miden la ida y vuelta (`sala.retardo`, en ms) y la ven en el HUD.
 - Todo lo recibido se valida (tipos, rangos, longitud) antes de usarse: los temas son públicos.
+
+**Lanza Burbujas** (spec 005): el invitado envía su ángulo y un contador de disparos (`fc`) en cada mensaje, así un disparo nunca se pierde; el anfitrión manda los dos tableros 20 veces/s (≈9 KB/s).
 
 **Niveles de red** (cada juego elige uno en su spec):
 - **A — Por eventos**: solo mensajes cuando pasa algo. Puzzles/tablero por turnos.

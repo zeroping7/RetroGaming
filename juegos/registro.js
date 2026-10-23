@@ -16,4 +16,17 @@ export const JUEGOS = [
     claveRecord: 'rb-best',         // clave de localStorage con el récord (opcional)
     orientacion: 'vertical',        // 'vertical' | 'horizontal' | 'libre' (D-007)
   },
+  {
+    id: 'lanza-burbujas',
+    titulo: 'Lanza Burbujas',
+    descripcion: 'Apunta el cañón y junta 3 burbujas del mismo color. 30 niveles, rivales gatunos y versus online.',
+    ruta: 'juegos/lanza-burbujas/',
+    portada: 'juegos/lanza-burbujas/portada.svg',
+    etiqueta: '#4d8dff',
+    jugadores: { min: 1, max: 2 },
+    online: true,
+    mismoDispositivo: false,        // versus solo online (spec 005)
+    claveRecord: 'lb-best',
+    orientacion: 'horizontal',
+  },
 ];

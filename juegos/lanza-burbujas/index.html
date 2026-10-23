@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lanza Burbujas</title>
+<meta name="theme-color" content="#0d0b1f">
+<link rel="manifest" href="../../manifest.webmanifest">
+<link rel="icon" href="icono.png">
+<link rel="apple-touch-icon" href="../../icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+:root{--bg:#0d0b1f;--panel:#1a1640;--fg:#f4f1ff;--muted:#a59fd6;--p1:#2ec4b6;--p2:#ff8fc7;--accent:#ffcf3a;--px:"Press Start 2P",ui-monospace,monospace;color-scheme:dark}
+html,body{height:100%}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--px);margin:0;display:flex;align-items:stretch;overflow:hidden;
+  padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);
+  user-select:none;-webkit-user-select:none;touch-action:none}
+[hidden]{display:none!important}
+#wrap{flex:1;min-width:0;position:relative}
+#juego{position:absolute;inset:0}
+#juego canvas{display:block}
+.menu{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px}
+.menu h1{font-size:18px;line-height:1.4;text-align:center;margin:0 0 4px;color:var(--accent);text-shadow:3px 3px 0 #5a2bd6}
+.menu h2{font-size:7px;color:var(--muted);margin:0;letter-spacing:.1em;text-align:center}
+.cols{display:flex;gap:18px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:8px;align-items:center}
+.menu button{font:inherit;font-size:10px;padding:12px 14px;border:0;border-radius:10px;cursor:pointer;width:220px;max-width:100%}
+.b1{background:var(--p1);color:#03201d}.b2{background:var(--p2);color:#33001a}.b3{background:var(--accent);color:#2a1b00}
+.bq{background:var(--panel);color:var(--fg)}
+.menu p{font-size:7px;color:var(--muted);text-align:center;line-height:1.8;margin:0;max-width:440px}
+.menu input{font:inherit;font-size:18px;text-align:center;letter-spacing:.3em;text-transform:uppercase;width:220px;max-width:100%;padding:12px;border-radius:10px;border:2px solid var(--muted);background:var(--bg);color:var(--fg)}
+.err{color:var(--p2)!important}
+.menu button.home{font-size:8px;padding:9px 12px;width:auto;background:var(--bg);color:var(--muted);border:2px solid var(--panel)}
+.capa{background:rgba(13,11,31,.95)}
+#share{position:absolute;bottom:14%;left:50%;transform:translateX(-50%);font:inherit;font-size:10px;padding:13px 16px;border:0;border-radius:10px;background:var(--accent);color:#2a1b00;cursor:pointer;white-space:nowrap;z-index:3}
+#barra{position:absolute;top:6px;right:6px;z-index:4;display:flex;gap:6px;align-items:center;justify-content:flex-end}
+.arriba{line-height:1;border:0;border-radius:6px;background:rgba(0,0,0,.45);color:var(--fg);cursor:pointer;height:30px}
+#quit{font:inherit;font-size:8px;padding:0 8px}
+#snd{font-size:15px;padding:0 7px}
+#pausa{font-size:15px;padding:0 8px}
+/* en el móvil, durante la partida, los botones van encima del DISPARO para no tapar el juego */
+@media (pointer:coarse){body:not(.en-menu) #barra{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:calc(env(safe-area-inset-right,0px) + 6px);width:clamp(72px,calc(13vw - 12px),108px);flex-wrap:wrap}
+  body:not(.en-menu) #quit{flex-basis:100%}}
+#pausa i{display:inline-block;width:4px;height:13px;background:currentColor;margin:0 2px;vertical-align:middle}
+/* récords */
+#recs ol{list-style:none;margin:0;padding:0;width:300px;max-width:100%;font-size:8px;line-height:1}
+#recs li{display:grid;grid-template-columns:26px 1fr auto 40px;gap:6px;padding:5px 8px;border-radius:6px}
+#recs li:nth-child(odd){background:rgba(26,22,64,.85)}
+#recs li.nuevo{background:var(--accent);color:#2a1b00}
+#recs li span:nth-child(3),#recs li span:nth-child(4){text-align:right}
+#recs .cab{font-size:6px;color:var(--muted);background:none!important}
+#letras{display:flex;gap:10px}
+#letras button{width:52px;padding:12px 0;font-size:22px;background:var(--panel);color:var(--fg);border:3px solid var(--panel)}
+#letras button.act{border-color:var(--accent);color:var(--accent)}
+#letras button.ok{color:var(--p1)}
+.menu button.sel,.capa-pausa button.sel,.menu input.sel{outline:3px solid var(--accent);outline-offset:2px}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+/* controles táctiles: a los lados del juego (constitución C2: solo en pantallas táctiles) */
+.pad{width:clamp(84px,13vw,120px);display:flex;flex-direction:column;justify-content:flex-end;gap:8px;padding:8px 6px 12px}
+.pad .fila{display:flex;gap:6px}
+.pad button{flex:1;font:inherit;font-size:20px;padding:0;height:clamp(64px,24vh,110px);border:0;border-radius:12px;background:var(--panel);color:var(--fg);touch-action:none;min-width:0}
+.pad>button{flex:none}
+.pad button.fire{font-size:9px;background:var(--p1);color:#03201d;height:clamp(90px,46vh,180px)}
+.pad button.on{filter:brightness(1.45)}
+body.en-menu .pad{display:none}
+@media (hover:hover) and (pointer:fine){.pad{display:none}}
+#cargando{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted)}
+</style>
+</head>
+<body class="en-menu">
+<div class="pad" id="padL"><div class="fila"><button data-k="left" aria-label="Girar a la izquierda">◀</button><button data-k="right" aria-label="Girar a la derecha">▶</button></div></div>
+<div id="wrap">
+  <div id="juego"></div>
+  <p id="cargando">CARGANDO…</p>
+  <div id="barra">
+    <button id="pausa" class="arriba" aria-label="Pausa" hidden><i></i><i></i></button>
+    <button id="snd" class="arriba" aria-label="Sonido"></button>
+    <button id="quit" class="arriba" hidden>SALIR</button>
+  </div>
+  <button id="share" hidden>COMPARTIR ENLACE</button>
+  <div class="menu" id="menu">
+    <h1>LANZA BURBUJAS</h1>
+    <div class="cols">
+      <div class="col">
+        <h2>1 JUGADOR</h2>
+        <button id="m1" class="b1">NIVELES</button>
+        <button id="mcpu" class="b2">VS CPU</button>
+        <button id="mrec" class="bq">RÉCORDS</button>
+      </div>
+      <div class="col">
+        <h2>ONLINE · CADA UNO SU MÓVIL</h2>
+        <button id="mh" class="b3">CREAR PARTIDA</button>
+        <button id="mj" class="bq">UNIRSE CON CÓDIGO</button>
+        <button id="mhome" class="bq home">◀ MENÚ RETROGAMING</button>
+      </div>
+    </div>
+    <p id="mmsg"></p>
+    <p>Teclado: ← → giran y Espacio dispara · Mando: cruceta y A</p>
+  </div>
+  <div class="menu" id="join" hidden>
+    <h1>UNIRSE</h1>
+    <p>Escribe el código que ve tu rival en su pantalla</p>
+    <input id="code" type="text" maxlength="4" autocomplete="off" aria-label="Código de partida">
+    <button id="jgo" class="b3">ENTRAR</button>
+    <button id="jback" class="bq">VOLVER</button>
+    <p id="jmsg"></p>
+  </div>
+  <div class="menu capa" id="recs" hidden>
+    <h1>RÉCORDS</h1>
+    <ol id="rlist"></ol>
+    <p id="rvacio">Aún no hay récords. ¡Juega una partida!</p>
+    <button id="rback" class="bq">VOLVER</button>
+  </div>
+  <div class="menu capa" id="ini" hidden>
+    <h1>¡NUEVO RÉCORD!</h1>
+    <p id="iquien"></p>
+    <div id="letras"><button data-i="0">A</button><button data-i="1">A</button><button data-i="2">A</button></div>
+    <p>◀ ▶ cambian la letra · DISPARO la confirma</p>
+  </div>
+</div>
+<div class="pad" id="padR"><button data-k="a" class="fire">DISPARO</button></div>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+<script type="module">
+// Página de Lanza Burbujas (spec 005): menús, controles, red y bucle de paso fijo.
+// Las reglas están en sim.js, la CPU en cpu.js y el dibujo en render.js (constitución A1).
+import * as S from './sim.js';
+import { crearCpu, pensar } from './cpu.js';
+import { crearAudio } from '../../src/audio/sintetizador.js';
+import { RECETAS } from './sonidos.js';
+import { crearPausa } from '../../src/pantalla/pausa.js';
+import { crearEntradas } from '../../src/input/entradas.js';
+import { leer as leerRecords, guardar as guardarRecords, entra, insertar, LETRAS } from './records.js';
+
+const $ = (id) => document.getElementById(id);
+const Q = new URLSearchParams(location.search);
+const NIVEL = Math.max(1, Math.min(30, parseInt(Q.get('nivel'), 10) || 1));   // ?nivel=N para probar
+const RIVAL = Math.max(1, Math.min(8, parseInt(Q.get('rival'), 10) || 1));    // ?rival=N para probar
+const DEPURAR = Q.get('debug') === '1';                                       // constitución Q1
+const FIN = new Set(['over', 'final', 'campeon']);
+
+let mode = 'menu', st = null, cpu = null, code = '', best = 0, render = null;
+const ent = [S.crearEntrada(), S.crearEntrada()];
+try { best = +localStorage.getItem('lb-best') || 0; } catch {}
+const vista = { yo: 0, alfa: 1, record: 0, red: '', guia: true, salir: false, sinCapa: false, espera: null, depura: '' }; // reutilizada (R5)
+
+/* ---------- sonido (D-011) ---------- */
+const audio = crearAudio(RECETAS);
+function pintarSnd() { const b = $('snd'); b.textContent = audio.silencio ? '🔇' : '🔊'; b.setAttribute('aria-pressed', String(!audio.silencio)); }
+$('snd').onclick = (e) => { e.stopPropagation(); audio.alternar(); pintarSnd(); $('snd').blur(); };
+addEventListener('keydown', (e) => { if ((e.key === 'm' || e.key === 'M') && !(e.target && e.target.tagName === 'INPUT')) { audio.alternar(); pintarSnd(); } });
+pintarSnd();
+/** Suena una lista de pares [código, dato]. `omitir`: tablero cuyos disparos ya sonaron (invitado). */
+function sonar(lista, omitir = -1) {
+  for (let i = 0; i + 1 < lista.length && i < 192; i += 2) {
+    const n = S.EVENTOS[lista[i] | 0], d = lista[i + 1] | 0;
+    if (!n) continue;
+    switch (n) {
+      case 'disparo': if (d !== omitir) audio.tocar('disparo'); break;
+      case 'explota': audio.tocar('explota', d % 10); break;
+      case 'cae': break;
+      case 'cascada': audio.tocar('cascada', d % 100); break;
+      case 'prisa': if (Math.floor(d / 100) === vista.yo) audio.tocar('prisa', d % 100); break;
+      case 'pierde': if (st && st.modo === 'niveles') audio.tocar('pierde'); break;
+      case 'ronda': audio.tocar(d - 1 === vista.yo ? 'gana' : d === 0 ? 'aviso' : 'pierdeRonda'); break;
+      case 'partida': audio.tocar(d === vista.yo ? 'victoria' : 'derrota'); break;
+      case 'envia': if (Math.floor(d / 100) === vista.yo) audio.tocar('envia'); break;
+      default: audio.tocar(n, d);
+    }
+  }
+}
+
+/* ---------- pausa: 0 no, 1 la pide el anfitrión o en local, 2 el invitado, 3 sin conexión ---------- */
+let pausa = 0, pausaRed = 0, pedidoN = 0, pedidoV = false, ultimoPn = 0, pausaPintada = '';
+const pantallaPausa = crearPausa({ alContinuar: () => pedirPausa(false), alSalir: () => { pantallaPausa.ocultar(); toMenu(); } });
+function enPartida() {
+  if (mode === 'local') return !!st;
+  if (mode === 'host') return !!st;
+  if (mode === 'guest') return !!gview && !!heardAt;
+  return false;
+}
+const pausaActual = () => (mode === 'guest' ? pausaRed : pausa);
+function pedirPausa(v) {
+  if (!enPartida()) return;
+  if (mode === 'local' || mode === 'host') {
+    if (pausa === 3) return;
+    pausa = v ? 1 : 0;
+    if (mode === 'host') { envioAcc = 1; enviarEstado(0); }
+  } else { if (pausaRed === 3) return; pedidoN++; pedidoV = v; if (sala) enviarMandos(); }
+  pintarPausa();
+}
+function pintarPausa() {
+  const pz = enPartida() ? pausaActual() : 0, clave = mode + pz;
+  if (clave === pausaPintada) return;
+  pausaPintada = clave;
+  if (!pz) { pantallaPausa.ocultar(); return; }
+  const yo = mode === 'guest' ? 2 : 1;
+  if (pz === 3) pantallaPausa.mostrar('PAUSA', mode === 'host' ? 'Esperando a tu rival…' : 'Reconectando…', false);
+  else if (mode === 'local') pantallaPausa.mostrar('PAUSA');
+  else pantallaPausa.mostrar('PAUSA', pz === yo ? 'Has pausado tú' : 'Ha pausado tu rival');
+  enfocarSiMando(document.querySelector('.capa-pausa'));
+}
+$('pausa').onclick = (e) => { e.stopPropagation(); pedirPausa(true); $('pausa').blur(); };
+document.addEventListener('visibilitychange', () => { if (document.hidden) pedirPausa(true); });
+
+/* ---------- mandos: táctil, teclado y mando con src/input/entradas.js ---------- */
+let entradas = null;
+const SUELTO = { left: false, right: false, a: false, up: false };
+function mandos() { return entradaBloqueada() || !entradas ? SUELTO : entradas.estado(0); }
+// Un toque rápido puede empezar y acabar entre dos ticks: se recuerda hasta el siguiente
+let pulsoA = false, pulsoFin = false;
+function leerMandos(e) {
+  const k = mandos();
+  e.left = k.left; e.right = k.right; e.a = k.a || k.up || pulsoA; e.ang = NaN; e.fc = -1; e.fa = NaN;
+  pulsoA = false;
+}
+
+/* ---------- partida local (niveles y VS CPU): el mismo camino que el anfitrión (A3) ---------- */
+function empezarLocal(modo) {
+  closeNet(); mode = 'local'; pausa = 0;
+  st = S.crear(modo, { semilla: (Math.random() * 2 ** 31) | 0, nivel: NIVEL, rival: RIVAL });
+  cpu = modo === 'cpu' ? crearCpu(st.rival, (Math.random() * 2 ** 31) | 0) : null;
+  vista.yo = 0; ocultarMenus(); $('quit').hidden = false; finVisto = false;
+}
+function tick() {
+  if (mode === 'host') { if (!netTick()) return; if (pausa) { enviarEstado(TICK); return; } }
+  else if (pausa) return;
+  leerMandos(ent[0]);
+  if (cpu) {
+    if (cpu.rival !== st.rival) cpu = crearCpu(st.rival, cpu.rng);
+    pensar(cpu, st, 1, TICK, ent[1]);
+  }
+  S.paso(st, ent, TICK);
+  if (st.eventos.length) {
+    sonar(st.eventos);
+    if (render) render.eventos(st.eventos, st, vista);
+    if (mode === 'host' && pendRed.length < 160) pendRed.push(...st.eventos);
+    st.eventos.length = 0;
+  }
+  if (mode === 'host') enviarEstado(TICK);
+  if (st.modo === 'niveles') {
+    const p = Math.max(st.puntos, st.mejor.p);
+    if (p > best) { best = p; try { localStorage.setItem('lb-best', best); } catch {} }
+  }
+}
+
+/* ---------- red (src/net/sala.js): el anfitrión simula, el invitado envía su cañón y dibuja ---------- */
+let sala = null, heardAt = 0, joinStart = 0, netGen = 0, envioAcc = 0, hostState = null, lastSnap = -1;
+const pendRed = [];
+let gview = null, gbuf = null, fcLocal = 0, faLocal = 0, propio = false, objetivoAng0 = 0, envioEn = 0, ultimoEnvio = '';
+const miCanon = { ang: 0, giroT: 0, giroD: 0 };
+const giroE = { left: false, right: false };
+function closeNet() {
+  netGen++; pendRed.length = 0; pausa = 0; pausaRed = 0; pedidoN = Date.now(); ultimoPn = 0;
+  if (sala) { sala.cerrar(); sala = null; }
+  hostState = null; heardAt = 0; gview = null; lastSnap = -1; propio = false; fcLocal = 0;
+  ent[1].ang = NaN; ent[1].fc = -1; ent[1].a = false;
+}
+function netInfo() { return sala ? (sala.via === 'directa' ? 'DIRECTA' : sala.servidores()) : ''; }
+function enterOnline(asHost, c) {
+  code = c; mode = asHost ? 'host' : 'guest'; st = null; vista.yo = asHost ? 0 : 1;
+  vista.espera = asHost ? { titulo: 'TU CÓDIGO', grande: c, sub: 'ESPERANDO A TU RIVAL…' } : { titulo: 'UNIRSE', grande: c, sub: 'ENTRANDO…' };
+  ocultarMenus(); $('quit').hidden = false;
+}
+const numero = (v, min, max) => (typeof v === 'number' && isFinite(v) && v >= min && v <= max ? v : NaN);
+function onMsg(tp, d) {
+  if (mode === 'host' && tp === 'in') {
+    heardAt = performance.now();
+    const e = ent[1], a = numero(d.a, -2000, 2000), fc = numero(d.fc, 0, 1e15), fa = numero(d.fa, -2000, 2000);
+    e.ang = a === a ? a / 1000 : NaN; e.fc = fc === fc ? fc : 0; e.fa = fa === fa ? fa / 1000 : NaN; e.a = !!d.f;
+    e.left = e.right = false;
+    if (typeof d.pn === 'number' && d.pn > ultimoPn) { ultimoPn = d.pn; if (pausa !== 3) pausa = d.pv ? 2 : 0; }
+  }
+  if (mode === 'guest' && tp === 'st') { heardAt = performance.now(); hostState = d; pausaRed = Math.max(0, Math.min(3, d.pz | 0)); }
+}
+async function openSala(c, asHost, onFail) {
+  const gen = ++netGen;
+  try {
+    const net = await import('../../src/net/sala.js');
+    const s = await net.crearSala({ juego: 'lanza-burbujas', version: 1, codigo: c || net.codigoAleatorio(), escuchar: [asHost ? 'in' : 'st'], anfitrion: asHost });
+    if (gen !== netGen) { s.cerrar(); return null; }
+    sala = s; s.alRecibir(onMsg); return s;
+  } catch (e) { if (gen === netGen) onFail(e.message && e.message.startsWith('No se pudo') ? e.message : 'Sin conexión: el modo online necesita internet.'); return null; }
+}
+function host(msgEl) {
+  msgEl.className = ''; msgEl.textContent = 'Creando…';
+  openSala(null, true, (t) => { msgEl.className = 'err'; msgEl.textContent = t; }).then((s) => { if (s) enterOnline(true, s.codigo); });
+}
+function joinGame(c) {
+  const m = $('jmsg'); m.className = ''; m.textContent = 'Entrando…'; code = c;
+  openSala(c, false, (t) => { m.className = 'err'; m.textContent = t; }).then((s) => { if (s) { enterOnline(false, c); joinStart = performance.now(); } });
+}
+// Anfitrión: ¿hay invitado? Si no responde 4 s, la partida queda en pausa hasta que vuelva.
+function netTick() {
+  const now = performance.now();
+  if (!heardAt || now - heardAt > 4000) {
+    ent[1].a = false;
+    if (st) { pausa = 3; enviarEstado(TICK); }
+    return false;
+  }
+  if (pausa === 3) pausa = 2;
+  if (!st) { st = S.crear('online', { semilla: (Math.random() * 2 ** 31) | 0 }); vista.espera = null; finVisto = false; }
+  return true;
+}
+function enviarEstado(dt) {
+  envioAcc += dt;
+  if (envioAcc < 1 / 20 || !sala || !st) return;
+  envioAcc = 0;
+  const e = S.codificar(st);
+  e.pz = pausa;
+  if (pendRed.length) e.e = pendRed.splice(0, 192);
+  sala.enviar('st', e);
+}
+// Invitado: su cañón, el contador de disparos (no se pierde aunque falte un mensaje) y el botón A
+function enviarMandos() {
+  if (!sala) return;
+  const k = mandos();
+  sala.enviar('in', { a: Math.round(miCanon.ang * 1000), fc: fcLocal, fa: Math.round(faLocal * 1000), f: !!(k.a || k.up), pn: pedidoN, pv: pedidoV ? 1 : 0 });
+}
+let aAntes = false;
+function guestFrame(dt) {
+  const now = performance.now(), k = mandos(), a = !!(k.a || k.up || pulsoA);
+  pulsoA = false;
+  const v = gview, juega = v && v.fase === 'juego' && !pausaRed && !v.tab[1].perdido;
+  // mi cañón gira al instante (predicción, nivel C)
+  if (juega) { giroE.left = k.left; giroE.right = k.right; S.girar(miCanon, giroE, dt); }
+  if (a && !aAntes && juega && !v.tab[1].vuelo.activo) {
+    fcLocal++; faLocal = miCanon.ang; propio = true;
+    const t = v.tab[1];
+    S.lanzar(t.vuelo, miCanon.ang, t.actual); t.actual = t.siguiente; t.siguiente = 0;
+    audio.tocar('disparo'); envioEn = 0;
+  }
+  aAntes = a;
+  const firma = Math.round(miCanon.ang * 1000) + '|' + fcLocal + '|' + a + '|' + pedidoN;
+  if (firma !== ultimoEnvio ? now - envioEn > 50 || !envioEn : now - envioEn > 500) { ultimoEnvio = firma; envioEn = now; enviarMandos(); }
+
+  if (heardAt && now - heardAt < 4000) {
+    if (hostState && hostState.n !== lastSnap) { lastSnap = hostState.n; recibirInstantanea(hostState); }
+    if (gview) predecir(dt);
+    st = gview;
+    if (gview) vista.espera = null;
+  } else if (!heardAt && now - joinStart > 15000) {
+    toMenu(); $('mmsg').className = 'err'; $('mmsg').textContent = 'No hay ninguna partida con ese código.';
+  } else if (heardAt && gview) pausaRed = 3;
+}
+function copiarVuelo(a, b) { b.activo = a.activo; b.quieto = a.quieto; b.x = a.x; b.y = a.y; b.px = a.px; b.py = a.py; b.vx = a.vx; b.vy = a.vy; b.c = a.c; b.reb = a.reb; }
+function recibirInstantanea(d) {
+  if (!gbuf) gbuf = [S.crear('online'), S.crear('online')];
+  const destino = gbuf[0] === gview ? gbuf[1] : gbuf[0];
+  const s = S.decodificar(d, destino);
+  if (!s) return;
+  const antes = gview;
+  if (!antes) { fcLocal = Math.max(fcLocal, s.tab[1].fc); miCanon.ang = s.tab[1].ang; }
+  const yo = s.tab[1];
+  if (antes) {
+    const mio = antes.tab[1];
+    if (yo.fc < fcLocal) { copiarVuelo(mio.vuelo, yo.vuelo); yo.actual = mio.actual; yo.siguiente = 0; }
+    else if (propio && yo.vuelo.activo) copiarVuelo(mio.vuelo, yo.vuelo); // el anfitrión aún lo mueve: sigo con el mío, que va por delante
+    else propio = false;
+  }
+  // la burbuja del anfitrión: adelantada lo que tardó en llegar
+  const lat = sala ? Math.min(0.6, sala.retardo / 2000) : 0.15, v0 = s.tab[0].vuelo;
+  for (let t = lat; t > 0 && v0.activo && !v0.quieto; t -= 1 / 60) if (S.moverVuelo(s.tab[0], v0, Math.min(1 / 60, t), null, 0)) v0.quieto = true;
+  objetivoAng0 = s.tab[0].ang;
+  if (antes) s.tab[0].ang = antes.tab[0].ang;
+  if (s.fase === 'juego') yo.ang = miCanon.ang;
+  else if (s.fase === 'listo') miCanon.ang = yo.ang; // ronda nueva: el cañón vuelve al centro
+  if (Array.isArray(d.e)) { sonar(d.e, 1); if (render) render.eventos(d.e, s, vista); }
+  gview = s;
+}
+function predecir(dt) {
+  const v = gview;
+  if (pausaRed) return;
+  v.t += dt;
+  v.tab[0].ang += (objetivoAng0 - v.tab[0].ang) * Math.min(1, dt * 15);
+  if (v.fase === 'juego') v.tab[1].ang = miCanon.ang;
+  for (let b = 0; b < 2; b++) {
+    const t = v.tab[b], w = t.vuelo;
+    if (w.activo && !w.quieto && S.moverVuelo(t, w, dt, null, b)) w.quieto = true;
+    if (v.fase === 'juego' && !w.activo) t.prisa = Math.min(S.PRISA, t.prisa + dt);
+  }
+}
+
+/* ---------- menús ---------- */
+function ocultarMenus() { $('menu').hidden = true; $('join').hidden = true; document.body.classList.remove('en-menu'); refrescarEscala(); }
+function toMenu() {
+  closeNet(); mode = 'menu'; st = null; cpu = null; pantallaPausa.ocultar(); pausaPintada = ''; vista.espera = null; vista.yo = 0;
+  $('menu').hidden = false; $('join').hidden = true; $('quit').hidden = true; $('mmsg').textContent = '';
+  $('recs').hidden = true; $('ini').hidden = true; ini = null; finVisto = false;
+  document.body.classList.add('en-menu'); refrescarEscala();
+  enfocarSiMando($('menu'));
+}
+// Al mostrar u ocultar los botones táctiles cambia el hueco del juego: Phaser debe medirlo antes de reescalar
+function refrescarEscala() { if (render) requestAnimationFrame(() => { const e = render.escena.scale; e.getParentBounds(); e.refresh(); }); }
+$('m1').onclick = () => empezarLocal('niveles');
+$('mcpu').onclick = () => empezarLocal('cpu');
+$('mh').onclick = () => { closeNet(); host($('mmsg')); };
+$('mj').onclick = () => { $('menu').hidden = true; $('join').hidden = false; $('jmsg').textContent = ''; $('code').value = ''; $('code').focus(); };
+$('jback').onclick = toMenu;
+$('mrec').onclick = () => { $('menu').hidden = true; mostrarRecords(-1); };
+function doJoin() {
+  const c = $('code').value.trim().toUpperCase();
+  if (!/^[A-Z0-9]{4}$/.test(c)) { $('jmsg').className = 'err'; $('jmsg').textContent = 'El código tiene 4 letras o números.'; return; }
+  closeNet(); joinGame(c);
+}
+$('jgo').onclick = doJoin;
+$('code').addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); e.stopPropagation(); });
+$('share').onclick = async () => {
+  const b = $('share'), net = await import('../../src/net/sala.js'), url = net.enlaceDePartida('lanza-burbujas', code);
+  if (navigator.share) { try { await navigator.share({ title: 'Lanza Burbujas', text: '¡Juega conmigo a Lanza Burbujas! Código ' + code, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(url); b.textContent = 'ENLACE COPIADO'; } catch { b.textContent = 'CÓDIGO ' + code; }
+  setTimeout(() => { b.textContent = 'COMPARTIR ENLACE'; }, 2000);
+};
+$('quit').onclick = toMenu;
+const toLauncher = () => { closeNet(); location.href = '../../'; };
+$('mhome').onclick = toLauncher;
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && mode === 'menu' && !$('menu').hidden) toLauncher(); });
+// Se juega en horizontal: si el móvil está en vertical, aviso «Gira el móvil» (D-007)
+import('../../src/pantalla/orientacion.js').then((m) => m.vigilarOrientacion('lanza-burbujas', { alCambiar: (ok) => { if (!ok) pedirPausa(true); } })).catch(() => {});
+// Entrar con un enlace ?sala=CODIGO: directo a unirse
+import('../../src/net/sala.js').then((net) => {
+  const c = net.codigoDeUrl(); if (!c) return;
+  $('menu').hidden = true; $('join').hidden = false; $('code').value = c; closeNet(); joinGame(c);
+}).catch(() => {});
+
+/* ---------- récords (solo modo Niveles, spec 005 §7) ---------- */
+let ini = null, finVisto = false, soltarA = false;
+function entradaBloqueada() { return !!ini || soltarA || (!$('recs').hidden && mode !== 'menu'); }
+function vigilarFin() {
+  if (!st || !FIN.has(st.fase)) { finVisto = false; vista.salir = false; return; }
+  if (st.modo !== 'niveles') { vista.salir = st.t > 0.8; return; }
+  if (finVisto) { vista.salir = !ini && $('recs').hidden && st.t > 0.8; return; }
+  if (st.fase === 'final' && st.t < 2.5) return; // que se vea el final antes de pedir las iniciales
+  finVisto = true;
+  const m = st.mejor.p ? st.mejor : { p: st.puntos, f: st.nivel };
+  if (entra(leerRecords(), m.p)) abrirIniciales(m);
+}
+function inicialesGuardadas() { try { const v = (localStorage.getItem('lb-iniciales') || '').toUpperCase(); if (/^[A-Z0-9]{3}$/.test(v)) return [...v].map((c) => LETRAS.indexOf(c)); } catch {} return [0, 0, 0]; }
+function abrirIniciales(m) {
+  ini = { pos: 0, letras: inicialesGuardadas(), p: m.p, f: m.f };
+  pantallaPausa.ocultar(); $('ini').hidden = false; pintarIniciales();
+}
+function pintarIniciales() {
+  $('iquien').textContent = ini.p.toLocaleString('es-ES') + ' PUNTOS · NIVEL ' + ini.f;
+  $('letras').querySelectorAll('button').forEach((b, i) => { b.textContent = LETRAS[ini.letras[i]]; b.classList.toggle('act', i === ini.pos); b.classList.toggle('ok', i < ini.pos); });
+}
+function cambiarLetra(d) { ini.letras[ini.pos] = (ini.letras[ini.pos] + d + LETRAS.length) % LETRAS.length; audio.tocar('aviso'); pintarIniciales(); }
+function confirmarLetra() {
+  ini.pos++; audio.tocar('disparo');
+  if (ini.pos < 3) { pintarIniciales(); return; }
+  const txt = ini.letras.map((i) => LETRAS[i]).join('');
+  try { localStorage.setItem('lb-iniciales', txt); } catch {}
+  const r = insertar(leerRecords(), { p: ini.p, i: txt, f: ini.f });
+  guardarRecords(r.lista); ini = null; $('ini').hidden = true; audio.tocar('vida');
+  mostrarRecords(r.pos);
+}
+$('letras').querySelectorAll('button').forEach((b) => b.addEventListener('pointerdown', (e) => {
+  e.preventDefault(); if (!ini) return; const i = +b.dataset.i;
+  if (i < ini.pos) { ini.pos = i; pintarIniciales(); } else if (i === ini.pos) cambiarLetra(1);
+}));
+function mostrarRecords(destacar) {
+  const l = leerRecords(), ol = $('rlist'); ol.textContent = '';
+  const fila = (cls, ...vs) => { const li = document.createElement('li'); if (cls) li.className = cls; for (const v of vs) { const sp = document.createElement('span'); sp.textContent = v; li.append(sp); } ol.append(li); };
+  if (l.length) fila('cab', '', 'NOMBRE', 'PUNTOS', 'NIVEL');
+  l.forEach((e, i) => fila(i === destacar ? 'nuevo' : '', (i + 1) + '.', e.i, e.p.toLocaleString('es-ES'), String(e.f)));
+  $('rvacio').hidden = l.length > 0;
+  $('rback').textContent = mode === 'menu' ? 'VOLVER' : 'SEGUIR';
+  $('recs').hidden = false; enfocarSiMando($('recs'));
+}
+$('rback').onclick = () => {
+  $('recs').hidden = true;
+  if (mode === 'menu') { $('menu').hidden = false; enfocarSiMando($('menu')); } else toMenu();
+};
+
+/* ---------- navegación de menús con teclado y mando (C3) ---------- */
+function contenedorActivo() {
+  if (pantallaPausa.visible) return document.querySelector('.capa-pausa');
+  if (ini) return null;
+  if (!$('recs').hidden) return $('recs');
+  if (mode !== 'menu') return null;
+  for (const id of ['join', 'menu']) if (!$(id).hidden) return $(id);
+  return null;
+}
+function opciones(c) { return [...c.querySelectorAll('button,input')].filter((e) => !e.hidden && e.offsetParent !== null && !e.disabled); }
+function marcar(el) { document.querySelectorAll('.sel').forEach((e) => e.classList.remove('sel')); if (!el) return; el.classList.add('sel'); el.focus({ preventScroll: true }); }
+function moverSel(c, d) { const l = opciones(c); if (!l.length) return; let i = l.indexOf(document.activeElement); i = i < 0 ? 0 : (i + d + l.length) % l.length; marcar(l[i]); }
+function enfocarSiMando(c) { if (entradas && entradas.dispositivo === 'mando' && c) marcar(opciones(c).find((e) => e.tagName === 'BUTTON')); }
+function atras(c) {
+  if (c === $('join')) { toMenu(); return true; }
+  if (c === $('recs')) { $('rback').click(); return true; }
+  return false;
+}
+entradas = crearEntradas({
+  alPulsar(acc, _j, info) {
+    if (ini) {
+      if (acc === 'left') { cambiarLetra(-1); return true; }
+      if (acc === 'right') { cambiarLetra(1); return true; }
+      if ((acc === 'a' || acc === 'up') && !info.repeticion) { confirmarLetra(); soltarA = true; return true; }
+      return false;
+    }
+    const c = contenedorActivo();
+    if (!c) {
+      if (acc === 'start' && !info.repeticion && enPartida()) { pedirPausa(!pausaActual()); return true; }
+      if ((acc === 'a' || acc === 'up') && !info.repeticion && !entradaBloqueada()) pulsoA = pulsoFin = true;
+      return false;
+    }
+    const enPausa = c.classList.contains('capa-pausa');
+    if (acc === 'up' || acc === 'left') { moverSel(c, -1); return true; }
+    if (acc === 'down' || acc === 'right') { moverSel(c, 1); return true; }
+    if (info.repeticion) return false;
+    if (acc === 'b') return atras(c);
+    if (acc === 'start' && enPausa && info.codigo !== 'Enter' && info.codigo !== 'NumpadEnter') { pedirPausa(false); return true; }
+    if (acc === 'a' || acc === 'start') {
+      const el = document.activeElement, dentro = el && c.contains(el) && (el.tagName === 'BUTTON' || el.tagName === 'INPUT');
+      if (info.origen === 'teclado' && dentro) return false;
+      if (enPausa && pausaActual() === 3) return false;
+      if (dentro && el.tagName === 'BUTTON') { soltarA = true; el.click(); return true; }
+      moverSel(c, 0); return true;
+    }
+    return false;
+  },
+});
+addEventListener('pointerdown', () => marcar(null), { passive: true, capture: true });
+document.querySelectorAll('.pad button').forEach((b) => {
+  entradas.botonTactil(b, b.dataset.k, 0);
+  b.addEventListener('pointerdown', () => b.classList.add('on'));
+  for (const t of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(t, () => b.classList.remove('on'));
+});
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+/* ---------- bucle: paso fijo de 60 ticks/s (A2) ---------- */
+const TICK = 1 / 60, MAX_TICKS = 8;
+let acc = 0, aFin = false, fps = 60, fpsT = 0, fpsN = 0, bytesE = 0, bytesR = 0, antes = 0;
+function fotograma() {
+  // tiempo real entre fotogramas (Phaser suaviza el suyo y en un móvil lento iría a cámara lenta)
+  const ahora = performance.now(), dt = antes ? Math.min(0.25, (ahora - antes) / 1000) : 1 / 60;
+  antes = ahora;
+  const k = mandos();
+  if (soltarA && !k.a && !k.up) soltarA = false;
+  if (mode === 'local' || mode === 'host') {
+    acc += dt; let n = 0;
+    while (acc >= TICK && n < MAX_TICKS && (mode === 'local' || mode === 'host')) { acc -= TICK; n++; if (mode === 'host' || st) tick(); }
+    if (n === MAX_TICKS) acc = 0;
+    vista.alfa = pausa ? 1 : acc / TICK;
+  } else { acc = 0; vista.alfa = 1; if (mode === 'guest') guestFrame(Math.min(0.05, dt)); }
+  // fin de partida: iniciales / récords o salir con A
+  vigilarFin();
+  const a = !!(k.a || k.up) || pulsoFin;
+  pulsoFin = false;
+  if (vista.salir && a && !aFin && !entradaBloqueada()) toMenu();
+  aFin = !!(k.a || k.up);
+  // la burbuja compartir solo mientras espero rival
+  const sh = $('share'), ver = mode === 'host' && !st; if (sh.hidden === ver) sh.hidden = !ver;
+  const bp = $('pausa'), vp = enPartida(); if (bp.hidden === vp) bp.hidden = !vp;
+  pintarPausa();
+  vista.record = best; vista.sinCapa = !!ini || !$('recs').hidden;
+  vista.red = sala ? code + '\n\n' + netInfo() + (sala.retardoMedido ? '\n\n' + Math.round(sala.retardo) + ' ms' : '') : '';
+  if (DEPURAR) depurar(dt);
+  render.dibujar(st, vista, dt);
+}
+// ?debug=1 (constitución Q1): FPS, tick, retardo, KB/s y rol
+function depurar(dt) {
+  fpsT += dt; fpsN++;
+  if (fpsT >= 1) {
+    fps = Math.round(fpsN / fpsT);
+    const e = sala ? sala.enviados : 0, r = sala ? sala.recibidos : 0;
+    const kbE = ((e - bytesE) / 1024 / fpsT).toFixed(1), kbR = ((r - bytesR) / 1024 / fpsT).toFixed(1);
+    bytesE = e; bytesR = r; fpsT = 0; fpsN = 0;
+    const rol = { menu: 'MENÚ', local: 'LOCAL', host: 'ANFITRIÓN', guest: 'INVITADO' }[mode];
+    vista.depura = `${fps} FPS  TICK ${st ? st.tick : 0}  ${rol}` + (sala ? `  ${Math.round(sala.retardo)}ms  ↑${kbE} ↓${kbR} KB/s  ${sala.via.toUpperCase()}` + (sala.prueba.lag || sala.prueba.loss ? `  LAG ${sala.prueba.lag} LOSS ${sala.prueba.loss}%` : '') : '');
+  }
+}
+
+/* ---------- arranque: fuente, Phaser y render ---------- */
+async function arrancar() {
+  try { await Promise.race([document.fonts.load('10px "Press Start 2P"'), new Promise((r) => setTimeout(r, 3000))]); } catch {}
+  if (!globalThis.Phaser) { $('cargando').textContent = 'NO SE PUDO CARGAR EL JUEGO. REVISA LA CONEXIÓN.'; return; }
+  const { crearRender } = await import('./render.js');
+  render = await crearRender($('juego'), fotograma);
+  $('cargando').hidden = true;
+  document.fonts.addEventListener?.('loadingdone', () => render.escena.children.list.forEach((o) => o.updateText && o.updateText()));
+  enfocarSiMando($('menu'));
+}
+arrancar().catch((e) => { $('cargando').textContent = 'ERROR: ' + e.message; });
+
+if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../../sw.js').catch(() => {}));
+// Para pruebas automáticas: lectura del estado interno (no se usa en el juego)
+window.__lb = { get render() { return render; }, get mode() { return mode; }, get st() { return st; }, get sala() { return sala; }, get gview() { return gview; }, get code() { return code; }, get ini() { return ini; }, get pausa() { return pausaActual(); }, get vista() { return vista; } };
+</script>
+</body>
+</html>

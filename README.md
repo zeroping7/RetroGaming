@@ -8,6 +8,7 @@ Consola de juegos retro en el navegador. Elige un cartucho y juega solo, con alg
 | Juego | Jugadores | Online |
 |---|---|---|
 | [Revienta Burbujas](juegos/revienta-burbujas/) | 1–2 | sí |
+| [Lanza Burbujas](juegos/lanza-burbujas/) | 1 (niveles y VS CPU) · 2 online | sí, versus |
 
 ## Cómo se desarrolla
 Con Spec Driven Development y Claude, todo desde el móvil:

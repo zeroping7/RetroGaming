@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pruebas · Lanza Burbujas</title>
+<style>
+  body{background:#0d0b1f;color:#f4f1ff;font:14px/1.5 ui-monospace,monospace;margin:0;padding:16px}
+  h1{font-size:16px;margin:0 0 12px}
+  #resumen{font-weight:bold;margin:0 0 12px;padding:10px;border-radius:8px}
+  .ok{color:#5ee6c2}.mal{color:#ff6fae}
+  #resumen.ok{background:#0f2e2a}#resumen.mal{background:#3a1026}
+  li{margin:4px 0}
+  a{color:#ffcf3a}
+</style>
+</head>
+<body>
+<h1>Pruebas de Lanza Burbujas</h1>
+<p id="resumen">Ejecutando…</p>
+<ul id="lista"></ul>
+<p><a href="./">◀ Volver al juego</a></p>
+<script type="module">
+// Pruebas sin frameworks (constitución Q3): cada una monta un estado, avanza y comprueba.
+import * as S from './sim.js';
+import { NIVELES, MUNDOS, TOTAL_NIVELES, LETRAS_COLOR, filasDe, mundoDe, NUM_COLORES } from './niveles.js';
+import { crearCpu, elegir, pensar, RIVALES_CPU } from './cpu.js';
+import { entra, insertar, limpiar, MAX_RECORDS } from './records.js';
+
+const { crear, paso, crearEntrada, codificar, decodificar, celda, centroX, centroY, FILA, R, D, ANCHO, COLS, FILAS } = S;
+const pruebas = [];
+const prueba = (nombre, fn) => pruebas.push({ nombre, fn });
+function igual(a, b, que) { if (a !== b) throw new Error(`${que}: esperaba ${b} y salió ${a}`); }
+function cierto(v, que) { if (!v) throw new Error(que); }
+const cerca = (a, b, e, que) => cierto(Math.abs(a - b) <= e, `${que}: ${a} ≠ ${b}`);
+
+const DT = 1 / 60;
+const quietas = (n) => Array.from({ length: n }, crearEntrada);
+function avanzar(st, seg, ent = quietas(st.tab.length)) { for (let t = 0; t < seg - 1e-9; t += DT) paso(st, ent, DT); }
+function jugando(modo = 'niveles', o) { const st = crear(modo, o); avanzar(st, st.dur + DT); paso(st, quietas(st.tab.length), DT); igual(st.fase, 'juego', 'tras la cuenta inicial'); st.eventos.length = 0; return st; }
+/** Rellena el tablero b con filas de letras (como niveles.js). */
+function tablero(st, b, filas) {
+  const t = st.tab[b];
+  t.celdas.fill(0);
+  filas.forEach((f, r) => [...f].forEach((ch, c) => { t.celdas[celda(r, c)] = Math.max(0, LETRAS_COLOR.indexOf(ch)); }));
+  return t;
+}
+/** Lanza una burbuja de color c recta hacia arriba desde x y la deja resolverse. */
+function tiroVertical(st, b, x, c) {
+  const t = st.tab[b], v = t.vuelo;
+  v.activo = true; v.quieto = false; v.reb = 0; v.x = x; v.y = 200; v.vx = 0; v.vy = -S.VEL; v.c = c;
+  for (let k = 0; k < 120 && v.activo; k++) paso(st, quietas(st.tab.length), DT);
+  cierto(!v.activo, 'la burbuja se ha pegado');
+}
+const cuenta = (t) => t.celdas.reduce((n, c) => n + (c ? 1 : 0), 0);
+const eventos = (st, nombre) => { const k = S.EVENTOS.indexOf(nombre); let n = 0; for (let i = 0; i < st.eventos.length; i += 2) if (st.eventos[i] === k) n++; return n; };
+
+/* ---------- rejilla ---------- */
+prueba('Vecinos en filas pares e impares', () => {
+  let n = S.vecinos(2, 3), v = [...S.vecinosDe().slice(0, n)].sort((a, b) => a - b);
+  igual(v.join(), [celda(1, 2), celda(1, 3), celda(2, 2), celda(2, 4), celda(3, 2), celda(3, 3)].sort((a, b) => a - b).join(), 'fila par');
+  n = S.vecinos(1, 3); v = [...S.vecinosDe().slice(0, n)].sort((a, b) => a - b);
+  igual(v.join(), [celda(0, 3), celda(0, 4), celda(1, 2), celda(1, 4), celda(2, 3), celda(2, 4)].sort((a, b) => a - b).join(), 'fila impar');
+  igual(S.vecinos(0, 0), 2, 'esquina');
+  igual(S.vecinos(1, 6), 5, 'final de fila impar');
+});
+
+prueba('Las filas pares tienen 8 huecos y las impares 7, desplazadas media burbuja', () => {
+  igual(S.ancho(0), 8, 'par'); igual(S.ancho(1), 7, 'impar');
+  igual(centroX(0, 0), R, 'x fila par'); igual(centroX(1, 0), 2 * R, 'x fila impar');
+  cierto(!S.valida(1, 7), 'no hay columna 7 en fila impar');
+});
+
+/* ---------- disparo ---------- */
+prueba('1 JUGADOR empieza en el nivel 1 con su tablero diseñado', () => {
+  const st = crear('niveles');
+  igual(st.nivel, 1, 'nivel'); igual(st.fase, 'listo', 'fase'); igual(st.dur, S.T_MUNDO, 'anuncia el mundo 1');
+  const f = filasDe(1), t = st.tab[0];
+  f.forEach((fila, r) => fila.forEach((c, k) => igual(t.celdas[celda(r, k)], c, `celda ${r},${k}`)));
+  const m = S.presentes(t);
+  cierto(m & (1 << t.actual) && m & (1 << t.siguiente), 'las burbujas cargadas son de colores del tablero');
+});
+
+prueba('El cañón gira un paso fino con un toque, sigue al mantener y no pasa de 80°', () => {
+  const st = jugando(), t = st.tab[0], e = quietas(1);
+  e[0].left = true; paso(st, e, DT);
+  cerca(t.ang, -S.PASO_GIRO, 1e-9, 'un toque');
+  avanzar(st, 0.5, e); cierto(t.ang < -10 * Math.PI / 180, 'mantener gira más');
+  avanzar(st, 3, e); cerca(t.ang, -S.ANG_MAX, 1e-9, 'tope');
+});
+
+prueba('El disparo sale recto y se pega en la fila 0 al tocar el techo', () => {
+  const st = jugando(), t = tablero(st, 0, ['A.......']);
+  const e = quietas(1); e[0].a = true; t.actual = 1;
+  paso(st, e, DT); cierto(t.vuelo.activo, 'sale'); e[0].a = false;
+  avanzar(st, 1, e);
+  cierto(!t.vuelo.activo, 'pegada');
+  cierto(t.celdas[celda(0, 3)] === 1 || t.celdas[celda(0, 4)] === 1, 'en el centro de la fila 0');
+  igual(t.disparos, 1, 'disparos');
+});
+
+prueba('La burbuja rebota en las paredes', () => {
+  const st = jugando(), t = tablero(st, 0, ['A.......']);
+  t.ang = -70 * Math.PI / 180;
+  const e = quietas(1); e[0].a = true; paso(st, e, DT); e[0].a = false;
+  let reb = false;
+  for (let k = 0; k < 60 && t.vuelo.activo; k++) { paso(st, e, DT); if (t.vuelo.reb) reb = true; cierto(t.vuelo.x >= R - 1e-6 && t.vuelo.x <= ANCHO - R + 1e-6, 'dentro'); }
+  cierto(reb, 'ha rebotado'); igual(eventos(st, 'rebote') > 0, true, 'evento de rebote');
+});
+
+prueba('La guía llega al primer rebote', () => {
+  const st = jugando(), t = tablero(st, 0, ['A.......']);
+  const o = {};
+  S.trayectoria(t, 0, o); cerca(o.gx, S.CANON_X, 1e-6, 'recto: x del cañón'); cierto(o.i >= 0, 'encuentra hueco');
+  S.trayectoria(t, -1.2, o); cerca(o.gx, R, 1e-6, 'a la izquierda: rebota en la pared'); cierto(o.gy < S.CANON_Y, 'por encima del cañón');
+});
+
+/* ---------- grupos y caídas ---------- */
+prueba('Tres del mismo color explotan y suman 10 cada una', () => {
+  const st = jugando(), t = tablero(st, 0, ['RR.....A']);
+  tiroVertical(st, 0, centroX(0, 2), 1);
+  igual(t.celdas[0] + t.celdas[1] + t.celdas[2], 0, 'han explotado');
+  igual(st.puntos, 30, 'puntos'); igual(eventos(st, 'explota'), 3, 'eventos');
+});
+
+prueba('Dos del mismo color no explotan', () => {
+  const st = jugando(), t = tablero(st, 0, ['R......A']);
+  tiroVertical(st, 0, centroX(0, 1), 1);
+  igual(t.celdas[0], 1, 'sigue'); igual(t.celdas[1], 1, 'pegada'); igual(st.puntos, 0, 'sin puntos');
+});
+
+prueba('Lo que queda colgando cae y da bonus doble (1→20, 2→40, 3→80)', () => {
+  const st = jugando(), t = tablero(st, 0, ['RR.....A', 'V......', 'VV......']);
+  tiroVertical(st, 0, centroX(0, 2), 1);
+  igual(cuenta(t), 1, 'solo queda la amarilla'); igual(st.puntos, 30 + 80, 'puntos');
+  igual(eventos(st, 'cae'), 3, 'eventos de caída');
+  igual(S.bonusCaida(1), 20, '1'); igual(S.bonusCaida(2), 40, '2'); igual(S.bonusCaida(17), 1310720, '17'); igual(S.bonusCaida(40), 1310720, 'máximo');
+});
+
+prueba('Las burbujas nuevas solo son de colores que quedan', () => {
+  const st = jugando(), t = tablero(st, 0, ['ZZZZZZZZ']);
+  t.actual = 1; t.siguiente = 1;
+  for (let k = 0; k < 30; k++) { S.disparar(t, 4); t.vuelo.activo = false; igual(t.siguiente, 4, 'azul'); }
+});
+
+/* ---------- presión ---------- */
+prueba('El techo tiembla 2 disparos antes y baja tras N disparos', () => {
+  const st = jugando(), t = tablero(st, 0, ['A......Z', 'A......']);
+  igual(st.techo, 8, 'cada 8 en el mundo 1');
+  t.desdeBajada = st.techo - 3;
+  tiroVertical(st, 0, centroX(0, 4), 2);
+  cierto(S.temblando(st, 0), 'tiembla'); igual(eventos(st, 'tiembla'), 1, 'evento');
+  tiroVertical(st, 0, centroX(0, 3), 4); tiroVertical(st, 0, centroX(0, 2), 2);
+  igual(t.bajadas, 1, 'ha bajado'); igual(t.desdeBajada, 0, 'cuenta de nuevo');
+  cerca(centroY(t, 0), R + FILA, 1e-9, 'todo baja una fila');
+});
+
+prueba('A los 10 s sin disparar, el cañón dispara solo', () => {
+  const st = jugando(), t = st.tab[0];
+  avanzar(st, 9.9); igual(t.disparos, 0, 'aún no');
+  avanzar(st, 0.2); igual(t.disparos, 1, 'disparo automático');
+  cierto(eventos(st, 'prisa') >= 5, 'cuenta atrás');
+});
+
+prueba('Una burbuja bajo la línea hace perder; ¿continuar? repite el nivel con 0 puntos', () => {
+  const st = jugando('niveles', { nivel: 7 }), t = st.tab[0];
+  st.puntos = 1234;
+  tablero(st, 0, ['AAAAAAAA', 'A......', 'A.......', 'A......', 'A.......', 'A......', 'A.......', 'A......', 'A.......', 'A......', 'A.......', 'A......']);
+  t.bajadas = 1;
+  paso(st, quietas(1), DT);
+  igual(st.fase, 'perdido', 'pierde'); cierto(t.perdido, 'tablero perdido');
+  igual(st.mejor.p, 1234, 'el récord guarda lo mejor (D-012)'); igual(st.mejor.f, 7, 'nivel del récord');
+  avanzar(st, S.T_PERDIDO + DT); igual(st.fase, 'continuar', '¿continuar?');
+  const e = quietas(1); e[0].a = true; paso(st, e, DT);
+  igual(st.fase, 'listo', 'otra vez'); igual(st.nivel, 7, 'mismo nivel'); igual(st.puntos, 0, 'puntos a 0'); cierto(!st.tab[0].perdido, 'tablero nuevo');
+});
+
+prueba('Sin continuar en 10 s, fin de la partida', () => {
+  const st = jugando(), t = tablero(st, 0, ['A.......']);
+  t.celdas[celda(12, 0)] = 1; paso(st, quietas(1), DT);
+  avanzar(st, S.T_PERDIDO + S.T_CONTINUAR + 0.1);
+  igual(st.fase, 'over', 'fin');
+});
+
+/* ---------- progresión ---------- */
+prueba('Vaciar el tablero da bonus de tiempo y pasa al siguiente nivel', () => {
+  const st = jugando(), t = tablero(st, 0, ['RR......']);
+  tiroVertical(st, 0, centroX(0, 2), 1);
+  igual(st.fase, 'limpio', 'limpio'); igual(st.bonus, 50000, 'rápido = 50.000'); igual(st.puntos, 50030, 'puntos');
+  avanzar(st, S.T_LIMPIO + DT);
+  igual(st.nivel, 2, 'nivel 2'); igual(st.fase, 'listo', 'listo');
+  igual(S.bonusTiempo(60), 0, 'a los 60 s, nada'); igual(S.bonusTiempo(32.5), 25000, 'a mitad');
+});
+
+prueba('Cada 5 niveles cambia el mundo (y su techo)', () => {
+  igual(mundoDe(5), 0, 'nivel 5'); igual(mundoDe(6), 1, 'nivel 6'); igual(mundoDe(30), 5, 'nivel 30');
+  const st = jugando('niveles', { nivel: 5 }), t = tablero(st, 0, ['RR......']);
+  tiroVertical(st, 0, centroX(0, 2), 1); avanzar(st, S.T_LIMPIO + DT);
+  igual(st.mundo, 1, 'mundo 2'); igual(st.dur, S.T_MUNDO, 'se anuncia'); igual(eventos(st, 'mundo'), 1, 'evento');
+  const st6 = crear('niveles', { nivel: 30 }); igual(st6.techo, 5, 'el último mundo baja cada 5');
+});
+
+prueba('Al limpiar el nivel 30, fin con bonus', () => {
+  const st = jugando('niveles', { nivel: 30 }), t = tablero(st, 0, ['RR......']);
+  tiroVertical(st, 0, centroX(0, 2), 1); const antes = st.puntos;
+  avanzar(st, S.T_LIMPIO + DT);
+  igual(st.fase, 'final', 'final'); igual(st.puntos, antes + S.BONUS_FINAL, 'bonus final'); igual(st.mejor.p, st.puntos, 'récord');
+});
+
+prueba('Los 30 niveles son válidos', () => {
+  igual(TOTAL_NIVELES, 30, 'número de niveles'); igual(MUNDOS.length, 6, 'mundos');
+  NIVELES.forEach((filas, n) => {
+    cierto(filas.length >= 3 && filas.length <= 9, `nivel ${n + 1}: filas`);
+    filas.forEach((f, r) => igual(f.length, r % 2 ? 7 : 8, `nivel ${n + 1}, fila ${r}`));
+    const st = crear('niveles', { nivel: n + 1 }), t = st.tab[0];
+    igual(S.sueltas(t.celdas), 0, `nivel ${n + 1}: nada suelto`);
+    cierto(!S.perdio(t), `nivel ${n + 1}: no empieza perdido`);
+    cierto(st.ncolores <= NUM_COLORES, 'colores');
+  });
+  cierto(MUNDOS.every((m, i) => i === 0 || m.techo <= MUNDOS[i - 1].techo), 'el techo baja cada vez antes');
+  igual(MUNDOS[0].techo, 8, 'nivel 1: cada 8'); igual(Math.min(...MUNDOS.map((m) => m.techo)), 5, 'mínimo cada 5');
+});
+
+/* ---------- versus ---------- */
+prueba('Versus: los dos tableros empiezan iguales', () => {
+  const st = crear('cpu'), [a, b] = st.tab;
+  igual(a.celdas.join(), b.celdas.join(), 'mismo dibujo'); igual(a.actual, b.actual, 'misma burbuja'); igual(a.siguiente, b.siguiente, 'misma siguiente');
+  cierto(cuenta(a) > 20, 'tablero lleno'); igual(S.sueltas(a.celdas), 0, 'nada suelto');
+});
+
+prueba('Versus: lo que cae le llega al rival como basura tras su disparo', () => {
+  const st = jugando('cpu');
+  tablero(st, 0, ['RR.....A', 'V......', 'VV......']);
+  const t1 = tablero(st, 1, ['ZZZZZZZZ']);
+  tiroVertical(st, 0, centroX(0, 2), 1);
+  igual(t1.basura, 3, 'basura pendiente'); igual(eventos(st, 'envia'), 1, 'evento');
+  const antes = cuenta(t1);
+  tiroVertical(st, 1, centroX(0, 0), 2);
+  igual(t1.basura, 0, 'entregada'); igual(cuenta(t1), antes + 1 + 3, 'mi disparo + 3 de basura'); igual(eventos(st, 'basura'), 3, 'eventos');
+  igual(S.sueltas(t1.celdas), 0, 'la basura queda pegada');
+});
+
+prueba('Versus: el techo baja cada 20 s', () => {
+  const st = jugando('cpu');
+  for (const t of st.tab) tablero(st, st.tab.indexOf(t), ['A.......']);
+  const e = quietas(2); e[0].fc = e[1].fc = 0; // nadie dispara (ni la prisa: cada uno dispara solo y no pasa nada)
+  avanzar(st, 17.1, e); cierto(S.temblando(st, 0), 'tiembla');
+  avanzar(st, 3, e); igual(st.tab[0].bajadas, 1, 'baja'); igual(st.tab[1].bajadas, 1, 'baja a los dos');
+});
+
+function ganaRonda(st, b) {
+  const t = st.tab[1 - b];
+  t.celdas[celda(12, 0)] = 1;
+  paso(st, quietas(2), DT);
+}
+
+prueba('Versus al mejor de 3; ganar a la CPU pasa al siguiente rival', () => {
+  const st = jugando('cpu');
+  ganaRonda(st, 0);
+  igual(st.fase, 'ronda', 'fin de ronda'); igual(st.ganador, 0, 'gana J1'); igual(st.marcador.join(), '1,0', 'marcador');
+  avanzar(st, S.T_RONDA + DT); igual(st.ronda, 2, 'ronda 2'); igual(st.fase, 'listo', 'listo');
+  avanzar(st, st.dur + DT); ganaRonda(st, 1); igual(st.marcador.join(), '1,1', 'empate a 1');
+  avanzar(st, S.T_RONDA + DT); avanzar(st, st.dur + DT); ganaRonda(st, 0);
+  avanzar(st, S.T_RONDA + DT); igual(st.fase, 'partida', 'fin de partida'); igual(st.ganador, 0, 'gana J1');
+  avanzar(st, S.T_PARTIDA + DT); igual(st.fase, 'rival', 'siguiente rival'); igual(st.rival, 1, 'rival 2');
+  avanzar(st, S.T_RIVAL + DT); igual(st.marcador.join(), '0,0', 'marcador a 0'); igual(st.fase, 'listo', 'empieza');
+});
+
+prueba('Perder contra la CPU deja continuar contra el mismo rival; ganar al 8 = campeón', () => {
+  let st = jugando('cpu', { rival: 3 });
+  for (let k = 0; k < 2; k++) { ganaRonda(st, 1); avanzar(st, S.T_RONDA + DT); if (st.fase === 'listo') avanzar(st, st.dur + DT); }
+  avanzar(st, S.T_PARTIDA + DT); igual(st.fase, 'continuar', '¿continuar?');
+  const e = quietas(2); e[0].a = true; paso(st, e, DT);
+  igual(st.rival, 2, 'mismo rival'); igual(st.marcador.join(), '0,0', 'de nuevo');
+  st = jugando('cpu', { rival: 8 });
+  for (let k = 0; k < 2; k++) { ganaRonda(st, 0); avanzar(st, S.T_RONDA + DT); if (st.fase === 'listo') avanzar(st, st.dur + DT); }
+  avanzar(st, S.T_PARTIDA + DT); igual(st.fase, 'campeon', 'campeón');
+});
+
+prueba('Online: revancha cuando los dos pulsan A', () => {
+  const st = jugando('online');
+  for (let k = 0; k < 2; k++) { ganaRonda(st, 0); avanzar(st, S.T_RONDA + DT); if (st.fase === 'listo') avanzar(st, st.dur + DT); }
+  igual(st.fase, 'partida', 'fin'); avanzar(st, 1.1);
+  const e = quietas(2); e[0].a = true; paso(st, e, DT); e[0].a = false; avanzar(st, 0.5, e);
+  igual(st.fase, 'partida', 'espera al otro'); cierto(st.revancha[0], 'J1 listo');
+  e[1].a = true; paso(st, e, DT);
+  igual(st.fase, 'listo', 'revancha'); igual(st.marcador.join(), '0,0', 'marcador a 0');
+});
+
+prueba('Online: el disparo del invitado va por contador y no se repite', () => {
+  const st = jugando('online'), t = st.tab[1];
+  const e = quietas(2); e[1].ang = 0.3; e[1].fc = 1; e[1].fa = -0.4;
+  paso(st, e, DT);
+  igual(t.disparos, 1, 'dispara'); cerca(t.ang, -0.4, 1e-9, 'con el ángulo del disparo'); igual(t.fc, 1, 'atendido');
+  avanzar(st, 1, e); igual(t.disparos, 1, 'el mismo contador no dispara otra vez');
+  e[1].fc = 2; avanzar(st, 0.1, e); igual(t.disparos, 2, 'contador nuevo = disparo nuevo');
+});
+
+/* ---------- CPU ---------- */
+prueba('La CPU encuentra el disparo que hace explotar un grupo', () => {
+  const st = jugando('cpu'), t = tablero(st, 1, ['ZZ.AAAAA']);
+  t.actual = 4;
+  const cpu = crearCpu(7, 3), o = {};
+  for (let k = 0; k < 10; k++) {
+    const ang = elegir(cpu, t);
+    S.trayectoria(t, ang, o);
+    t.celdas[o.i] = 4; const n = S.grupo(t.celdas, o.i); t.celdas[o.i] = 0;
+    cierto(n >= 3, 'grupo de 3 con el azul');
+  }
+  igual(RIVALES_CPU.length, 8, '8 rivales');
+});
+
+prueba('Partidas enteras CPU contra CPU sin errores', () => {
+  const st = crear('cpu', { semilla: 99 }), c0 = crearCpu(4, 1), c1 = crearCpu(5, 2), e = quietas(2);
+  let rondas = 0;
+  for (let k = 0; k < 60 * 240 && st.fase !== 'campeon' && st.fase !== 'over'; k++) {
+    pensar(c0, st, 0, DT, e[0]); pensar(c1, st, 1, DT, e[1]);
+    if (st.fase === 'continuar') e[0].a = !e[0].a;
+    const f = st.fase; paso(st, e, DT); st.eventos.length = 0;
+    if (f === 'juego' && st.fase === 'ronda') rondas++;
+  }
+  cierto(rondas >= 3, `se juegan rondas (${rondas})`);
+});
+
+prueba('Niveles jugados al azar sin errores', () => {
+  const st = crear('niveles', { semilla: 5 }), e = quietas(1), az = { rng: 77 };
+  let niveles = 0;
+  for (let k = 0; k < 60 * 600 && st.fase !== 'over' && st.fase !== 'final'; k++) {
+    e[0].ang = (S.azar(az) * 2 - 1) * 1.3; e[0].a = !e[0].a && S.azar(az) < 0.1;
+    if (st.fase === 'continuar') e[0].a = S.azar(az) < 0.5;
+    const f = st.fase; paso(st, e, DT); st.eventos.length = 0;
+    if (f === 'juego' && st.fase === 'limpio') niveles++;
+    for (const t of st.tab) cierto(S.sueltas(t.celdas) === 0, 'nunca quedan burbujas sueltas');
+  }
+  cierto(st.tick > 1000, 'avanza');
+});
+
+/* ---------- red ---------- */
+prueba('codificar / decodificar devuelve el mismo estado', () => {
+  const st = jugando('online');
+  const e = quietas(2); e[0].a = true; paso(st, e, DT); avanzar(st, 0.1);
+  st.tab[1].basura = 4; st.marcador[1] = 1;
+  const d = decodificar(JSON.parse(JSON.stringify(codificar(st))));
+  igual(d.fase, st.fase, 'fase'); igual(d.marcador.join(), st.marcador.join(), 'marcador');
+  for (let b = 0; b < 2; b++) {
+    const a = st.tab[b], c = d.tab[b];
+    igual(c.celdas.join(), a.celdas.join(), 'celdas'); cerca(c.ang, a.ang, 0.001, 'ángulo');
+    igual(c.actual, a.actual, 'actual'); igual(c.siguiente, a.siguiente, 'siguiente'); igual(c.basura, a.basura, 'basura');
+    igual(c.vuelo.activo, a.vuelo.activo, 'vuelo'); cerca(c.vuelo.x, a.vuelo.x, 0.06, 'x del vuelo'); igual(c.disparos, a.disparos, 'disparos');
+  }
+  cierto(JSON.stringify(codificar(st)).length < 700, 'instantánea pequeña (R2)');
+});
+
+prueba('decodificar rechaza mensajes rotos y limita lo que acepta', () => {
+  igual(decodificar(null), null, 'nulo'); igual(decodificar({ b: [] , f: 1 }), null, 'tableros');
+  igual(decodificar({ f: 99, b: [[], []] }), null, 'fase');
+  const ok = codificar(crear('online'));
+  const malo = JSON.parse(JSON.stringify(ok)); malo.b[0][0] = 'x'; igual(decodificar(malo), null, 'celdas');
+  const raro = JSON.parse(JSON.stringify(ok)); raro.b[0][0] = '9'.repeat(FILAS * COLS); raro.b[0][2] = 99999; raro.b[0][3] = 50; raro.m = [99, -3];
+  const d = decodificar(raro);
+  igual(d.tab[0].celdas[0], 0, 'color inválido = vacío'); cerca(d.tab[0].ang, S.ANG_MAX, 1e-9, 'ángulo limitado');
+  igual(d.tab[0].actual, NUM_COLORES, 'color limitado'); igual(d.marcador.join(), '9,0', 'marcador limitado');
+});
+
+/* ---------- récords ---------- */
+prueba('Récords: top 10 ordenado', () => {
+  let l = [];
+  for (let k = 1; k <= 12; k++) l = insertar(l, { p: k * 100, i: 'AAA', f: 1 }).lista;
+  igual(l.length, MAX_RECORDS, 'máximo 10'); igual(l[0].p, 1200, 'el mejor arriba');
+  cierto(!entra(l, 100), 'no entra'); cierto(entra(l, 5000), 'entra');
+  igual(limpiar([{ p: 5, i: 'x!', f: 1 }]).length, 0, 'iniciales raras fuera');
+});
+
+const lista = document.getElementById('lista');
+let fallos = 0;
+for (const { nombre, fn } of pruebas) {
+  const li = document.createElement('li');
+  try { fn(); li.className = 'ok'; li.textContent = '✓ ' + nombre; }
+  catch (e) { fallos++; li.className = 'mal'; li.textContent = '✗ ' + nombre + ' — ' + e.message; }
+  lista.appendChild(li);
+}
+const r = document.getElementById('resumen');
+r.className = fallos ? 'mal' : 'ok';
+r.textContent = fallos ? `${fallos} de ${pruebas.length} fallan` : `Las ${pruebas.length} pruebas pasan`;
+</script>
+</body>
+</html>

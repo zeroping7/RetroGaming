@@ -25,6 +25,20 @@ const INTENTOS_DIRECTA = 3;
 // alguno: en una WiFi tardan milisegundos y evitan perder, por ejemplo, un disparo.
 const CANAL = { ordered: false, maxRetransmits: 2 };
 
+// Prueba de mala conexión (constitución Q2, D-014): ?lag=150&loss=5 añade 150 ms a la ida y
+// vuelta (la mitad al enviar y la otra mitad al recibir) y pierde un 5 % de los mensajes.
+const PRUEBA_RED = (() => {
+  try {
+    const q = new URLSearchParams(location.search);
+    return { lag: Math.max(0, Math.min(3000, Number(q.get('lag')) || 0)), loss: Math.max(0, Math.min(90, Number(q.get('loss')) || 0)) };
+  } catch { return { lag: 0, loss: 0 }; }
+})();
+function conMalaRed(fn) {
+  if (!PRUEBA_RED.lag && !PRUEBA_RED.loss) { fn(); return; }
+  if (Math.random() * 100 < PRUEBA_RED.loss) return;
+  if (PRUEBA_RED.lag) setTimeout(fn, PRUEBA_RED.lag / 2); else fn();
+}
+
 export const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // sin 0/O ni 1/I/L
 
 export function codigoAleatorio() {
@@ -79,7 +93,7 @@ function cargarMqtt() {
  * @param {string[]} o.escuchar  temas que envía el otro jugador (p. ej. el anfitrión escucha ['in'])
  * @param {boolean} o.anfitrion  el invitado es quien propone la conexión directa
  * @returns {Promise<{
- *   codigo: string, via: 'directa'|'mqtt', retardo: number, retardoMedido: boolean,
+ *   codigo: string, via: 'directa'|'mqtt', retardo: number, retardoMedido: boolean, enviados: number, recibidos: number,
  *   enviar(tema: string, datos: object): void, alRecibir(fn: (tema: string, datos: object) => void): void,
  *   servidores(): string, cerrar(): void }>}
  *   `retardo`: ida y vuelta suavizada, en ms. `servidores()`: p. ej. '✓1 ✓2 ✗3'.
@@ -108,6 +122,11 @@ export async function crearSala({ juego, version, codigo, escuchar, anfitrion = 
     via: 'mqtt',
     retardo: RETARDO_INICIAL,
     retardoMedido: false,
+    /** Bytes enviados y recibidos de datos del juego (para ?debug=1, constitución Q1). */
+    enviados: 0,
+    recibidos: 0,
+    /** Retardo y pérdida simulados con ?lag= y ?loss= (Q2). */
+    prueba: PRUEBA_RED,
     enviar(tema, datos) {
       if (cerrada) return;
       const ahora = performance.now();
@@ -115,10 +134,14 @@ export async function crearSala({ juego, version, codigo, escuchar, anfitrion = 
       datos._t = Math.round(ahora);
       if (ecoT !== null) { datos._e = ecoT; datos._a = Math.round(ahora - ecoEn); }
       const m = JSON.stringify(datos);
-      if (canal && canal.readyState === 'open') {
-        try { canal.send(tema + '|' + m); return; } catch {}
-      }
-      publicar(tema, m);
+      sala.enviados += m.length;
+      conMalaRed(() => {
+        if (cerrada) return;
+        if (canal && canal.readyState === 'open') {
+          try { canal.send(tema + '|' + m); return; } catch {}
+        }
+        publicar(tema, m);
+      });
     },
     alRecibir(fn) { oyente = fn; },
     servidores() {
@@ -138,14 +161,18 @@ export async function crearSala({ juego, version, codigo, escuchar, anfitrion = 
     }
   }
 
-  // Mensaje del juego, llegue por la vía que llegue
-  function procesar(tema, d) {
+  // Mensaje del juego, llegue por la vía que llegue (con ?lag/?loss, después de la espera simulada)
+  function procesar(tema, d, bytes) {
+    conMalaRed(() => { if (!cerrada) procesarYa(tema, d, bytes); });
+  }
+  function procesarYa(tema, d, bytes) {
     if (!d || typeof d !== 'object' || typeof d.n !== 'number') return;
     // Por MQTT llega repetido (un servidor por copia) y sin orden por la vía directa:
     // se acepta solo lo más nuevo
     const u = ultimo[tema];
     if (u !== undefined && d.n <= u && u - d.n < 1000) return;
     ultimo[tema] = d.n;
+    sala.recibidos += bytes || 0;
 
     // Retardo: el otro devuelve mi hora (_e) y cuánto tardó en contestar (_a)
     const ahora = performance.now();
@@ -164,9 +191,10 @@ export async function crearSala({ juego, version, codigo, escuchar, anfitrion = 
     if (cerrada || !tp.startsWith(base)) return;
     const tema = tp.slice(base.length);
     let d;
-    try { d = JSON.parse(buf.toString()); } catch { return; }
+    const txt = buf.toString();
+    try { d = JSON.parse(txt); } catch { return; }
     if (tema === 'rtc') senal(d);
-    else if (escuchar.includes(tema)) procesar(tema, d);
+    else if (escuchar.includes(tema)) procesar(tema, d, txt.length);
   }
 
   /* ---------- conexión directa (WebRTC) ----------
@@ -233,7 +261,7 @@ export async function crearSala({ juego, version, codigo, escuchar, anfitrion = 
       if (!escuchar.includes(tema)) return;
       let d;
       try { d = JSON.parse(e.data.slice(k + 1)); } catch { return; }
-      procesar(tema, d);
+      procesar(tema, d, e.data.length - k - 1);
     };
   }
 

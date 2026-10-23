@@ -2,13 +2,15 @@
 // Recibe el estado y las entradas de cada jugador y lo avanza. Lo usan el modo local,
 // el anfitrión online y la predicción del invitado.
 
+import { FASES, empiezaMundo } from './fases.js';
+
 export const W = 400, H = 560, FLOOR = 520;
 export const R = [0, 9, 16, 26, 40];          // radio por tamaño (1 a 4)
 export const BOUNCE = [0, 150, 230, 310, 380]; // altura del bote por tamaño
 export const G = 900;                          // gravedad, px/s²
 export const VEL_JUGADOR = 220, VEL_ARPON = 520; // px/s
 const PUNTOS = [0, 100, 60, 40, 20];           // por burbuja, de pequeña a grande
-const ESTADOS = ['ready', 'play', 'dead', 'clear', 'over'];
+const ESTADOS = ['ready', 'play', 'dead', 'clear', 'over', 'continuar']; // añadir al final: el índice viaja por la red
 
 // Armas (spec 002). El índice es lo que viaja por la red.
 export const ARMAS = ['normal', 'doble', 'fijo', 'triple'];
@@ -33,6 +35,12 @@ const VIDAS_EXTRA = [20000, 50000];             // y después cada 50.000
 const VIDAS_CADA = 50000, MAX_VIDAS = 9;
 const PUNTOS_FRUTA = 500;
 
+// Cuenta inicial de cada fase; más larga al empezar un mundo, para anunciarlo (spec 004, bloque C)
+export const READY_SEG = 1.4, MUNDO_SEG = 2.8;
+
+// Final de partida (spec 004, bloque D)
+export const CONTINUAR_SEG = 10;                 // s para decidir si se sigue
+
 // Escenario (spec 004, bloque B)
 export const VEL_HEX = 95;                       // px/s en cada eje de las burbujas hexagonales
 const PUNTOS_BLOQUE = 50;                        // por romper un bloque
@@ -53,7 +61,7 @@ const PUNTOS_OBJETO = 100;
 // Eventos (spec 003): lo que ha pasado en el tick, para que la página lo convierta en sonido.
 // Cada evento es [código, dato]: dato = jugador (disparo, clavado, escudo, muerte),
 // tamaño (estallido) o tipo de objeto (objeto); 0 en el resto.
-export const EVENTOS = ['listo', 'disparo', 'clavado', 'estallido', 'aparece', 'objeto', 'dinamita', 'reloj', 'escudo', 'muerte', 'limpio', 'fin', 'combo', 'vida', 'tiempo', 'aviso', 'rompe'];
+export const EVENTOS = ['listo', 'disparo', 'clavado', 'estallido', 'aparece', 'objeto', 'dinamita', 'reloj', 'escudo', 'muerte', 'limpio', 'fin', 'combo', 'vida', 'tiempo', 'aviso', 'rompe', 'mundo', 'continua'];
 const MAX_EVENTOS = 64; // por si nadie los recoge (p. ej. en las pruebas)
 function ev(st, nombre, dato = 0) {
   if (st.eventos.length >= MAX_EVENTOS) st.eventos.splice(0, 2);
@@ -76,7 +84,11 @@ function ev(st, nombre, dato = 0) {
  *  tipo: índice en TIPOS. enSuelo: segundos desde que tocó el suelo (-1 mientras cae).
  *  @typedef {Object} Estado
  *  @property {1|2} n          jugadores
- *  @property {'ready'|'play'|'dead'|'clear'|'over'|'again'} state  'again': fin de partida y alguien pulsó disparo
+ *  @property {'ready'|'play'|'dead'|'clear'|'continuar'|'over'|'again'} state  'continuar': sin vidas, cuenta
+ *    atrás para seguir; 'again': fin de partida y alguien pulsó disparo
+ *  @property {{ p: number, f: number }} mejor  mejor tramo de la partida (puntos y fase): continuar pone los
+ *    puntos a 0, así que el récord se guarda con lo mejor que se llegó a hacer
+ *  @property {boolean} soltado  en 'continuar': nadie tiene pulsado disparo desde que empezó la cuenta
  *  @property {number} t       segundos que quedan de la fase actual
  *  @property {number} lvl, score, lives
  *  @property {number} hit     jugador tocado (-1 ninguno)
@@ -104,7 +116,8 @@ function ev(st, nombre, dato = 0) {
 
 /** Número aleatorio entre 0 y 1 a partir de la semilla del estado (mulberry32): mismo
  *  resultado con la misma semilla, así las pruebas son repetibles. */
-function azar(st) {
+function azar(st) { return azarDe(st); }
+function azarDe(st) {
   let t = (st.semilla = (st.semilla + 0x6d2b79f5) | 0);
   t = Math.imul(t ^ (t >>> 15), t | 1);
   t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
@@ -211,26 +224,50 @@ function newBall(s, x, y, dir, hex = false) {
   return hex ? { s, x, y, vx: dir * VEL_HEX, vy: -VEL_HEX, hex: true } : { s, x, y, vx: dir * 70, vy: bounceV(s) * 0.6 };
 }
 
-// Nivel generado (hasta que lleguen las fases diseñadas del bloque C): desde el nivel 2 hay
-// bloques, a veces una burbuja de objeto, y desde el 3 algunas hexagonales.
+// Fase del nivel actual (spec 004, bloque C): las 20 primeras salen de fases.js; desde la 21
+// se generan con la semilla de la partida, cada vez con más burbujas, hexagonales y bloques duros.
+// Con 2 jugadores hay una burbuja más: un tamaño menos que la primera, donde haya más hueco.
 function level(st) {
-  const n = st.lvl, b = [];
-  const cnt = Math.min(1 + Math.floor((n - 1) / 2), 4) + (st.n - 1), size = Math.min(2 + n, 4);
-  for (let i = 0; i < cnt; i++) {
-    const c = newBall(size, (W / (cnt + 1)) * (i + 1), 140, i % 2 ? -1 : 1, n >= 3 && azar(st) < 0.3);
-    b.push(c);
+  const f = FASES[st.lvl - 1], b = [];
+  if (f) {
+    for (const o of f.burbujas) { const c = newBall(o.s, o.x, o.y, o.dir, !!o.hex); if (o.obj) c.obj = true; b.push(c); }
+    st.bloques = f.bloques.map((k) => ({ x: k.x, y: k.y, w: k.w, h: k.h, duro: !!k.duro }));
+    st.tiempoFase = f.tiempo;
+  } else {
+    generarFase(st, b);
+    st.tiempoFase = tiempoNivel(b.length);
   }
-  if (n >= 2 && azar(st) < 0.4) b[Math.floor(azar(st) * b.length)].obj = true;
-  st.bloques = [];
-  if (n >= 2) {
-    const total = Math.min(1 + Math.floor(n / 2), 4);
-    for (let t = 0; t < 30 && st.bloques.length < total; t++) {
-      const w = 50 + Math.floor(azar(st) * 5) * 10, h = 14;
-      const k = { x: 20 + Math.floor(azar(st) * (W - 40 - w)), y: 200 + Math.floor(azar(st) * 9) * 20, w, h, duro: azar(st) < 0.4 };
-      if (st.bloques.every((o) => k.x + k.w + 16 < o.x || o.x + o.w + 16 < k.x || k.y + k.h + 30 < o.y || o.y + o.h + 30 < k.y)) st.bloques.push(k);
+  if (st.n > 1 && b.length) {
+    // donde más lejos quede de las demás burbujas (en horizontal)
+    const p = b[0];
+    let x = W / 2, lejos = -1;
+    for (let cx = 40; cx <= W - 40; cx += 20) {
+      let d = Infinity;
+      for (const o of b) d = Math.min(d, Math.abs(o.x - cx));
+      if (d > lejos) { lejos = d; x = cx; }
     }
+    b.push(newBall(Math.max(1, p.s - 1), x, p.y, x < W / 2 ? 1 : -1, !!p.hex));
   }
   return b;
+}
+
+// Cada fase generada sale de la semilla de la partida y su número: al morir se repite igual.
+function generarFase(st, b) {
+  const d = st.lvl - FASES.length; // 1 en la fase 21
+  const g = { semilla: (st.base ^ Math.imul(st.lvl, 0x9e3779b1)) | 0 };
+  const cnt = Math.min(2 + Math.floor(d / 3), 5), hex = Math.min(0.2 + 0.03 * d, 0.6);
+  for (let i = 0; i < cnt; i++) {
+    const s = azar(g) < 0.75 ? 4 : 3;
+    b.push(newBall(s, (W / (cnt + 1)) * (i + 1), 120 + Math.floor(azar(g) * 3) * 10, i % 2 ? -1 : 1, azar(g) < hex));
+  }
+  if (azar(g) < 0.5) b[Math.floor(azar(g) * b.length)].obj = true;
+  st.bloques = [];
+  const total = Math.min(2 + Math.floor(d / 4), 6), duro = Math.min(0.3 + 0.02 * d, 0.7);
+  for (let t = 0; t < 40 && st.bloques.length < total; t++) {
+    const w = 50 + Math.floor(azar(g) * 5) * 10, h = 14;
+    const k = { x: 20 + Math.floor(azar(g) * (W - 40 - w)), y: 200 + Math.floor(azar(g) * 9) * 20, w, h, duro: azar(g) < duro };
+    if (st.bloques.every((o) => k.x + k.w + 16 < o.x || o.x + o.w + 16 < k.x || k.y + k.h + 30 < o.y || o.y + o.h + 30 < k.y)) st.bloques.push(k);
+  }
 }
 
 /** ¿Toca la burbuja el segmento vertical del arpón (de `top` al suelo en `sx`)? */
@@ -322,15 +359,44 @@ function sumarPuntos(st, n, x, y) {
   }
 }
 
+/* ---------- final de partida (spec 004, bloque D) ---------- */
+
+function guardarMejor(st) { if (st.score > st.mejor.p) st.mejor = { p: st.score, f: st.lvl }; }
+
+function empezarContinuar(st) {
+  guardarMejor(st);
+  st.state = 'continuar'; st.t = CONTINUAR_SEG; st.soltado = false;
+}
+
+// Cuenta atrás: un disparo (pulsado de nuevo, no el que se traía) sigue en la misma fase con los
+// puntos a 0 y las vidas del principio. A 0, fin de partida.
+function pasoContinuar(st, entradas, dt) {
+  const alguno = st.ps.some((p, i) => entradas[i] && entradas[i].a);
+  if (!alguno) st.soltado = true;
+  else if (st.soltado) {
+    st.score = 0; st.lives = vidasIniciales(st.n); st.proximaVida = VIDAS_EXTRA[0];
+    reset(st); ev(st, 'continua');
+    return;
+  }
+  const antes = Math.ceil(st.t);
+  st.t -= dt;
+  if (st.t <= 0) { st.state = 'over'; st.t = 1; ev(st, 'fin'); return; }
+  if (Math.ceil(st.t) < antes) ev(st, 'aviso');
+}
+
+function vidasIniciales(n) { return n === 2 ? 5 : 3; }
+
 function tiempoNivel(n) { return Math.min(TIEMPO_MAX, TIEMPO_BASE + TIEMPO_POR_BURBUJA * n); }
 
-function reset(st) {
+function reset(st, nuevaFase = false) {
   st.balls = level(st);
-  st.tiempo = tiempoNivel(st.balls.length); st.combo = { s: 0, n: 0, t: 0 }; st.textos = [];
+  st.tiempo = st.tiempoFase; st.combo = { s: 0, n: 0, t: 0 }; st.textos = [];
   const antes = st.ps || [];
   st.ps = [];
   for (let i = 0; i < st.n; i++) st.ps.push(nuevoJugador(st, i, antes[i]));
-  st.state = 'ready'; st.t = 1.4; st.pop = []; st.objetos = []; st.hit = -1; st.congelado = 0; st.ronda++;
+  st.state = 'ready'; st.t = READY_SEG; st.pop = []; st.objetos = []; st.hit = -1; st.congelado = 0; st.ronda++;
+  // al empezar un mundo nuevo, la cuenta inicial es más larga y la pantalla lo anuncia (render.js)
+  if (nuevaFase && empiezaMundo(st.lvl)) { st.t = MUNDO_SEG; ev(st, 'mundo'); }
 }
 
 /**
@@ -342,8 +408,8 @@ function reset(st) {
  */
 export function crear(n, semilla = (Date.now() ^ (performance.now() * 1000)) | 0, opciones = {}) {
   const prueba = (opciones.prueba || []).map((t) => TIPOS.indexOf(t)).filter((t) => t >= 0);
-  const st = { n, score: 0, lives: n === 2 ? 5 : 3, lvl: Math.max(1, opciones.nivel | 0 || 1), ronda: 0, semilla, prueba: prueba.length ? prueba : null, pruebaI: 0, eventos: [], bono: 0, proximaVida: VIDAS_EXTRA[0] };
-  reset(st);
+  const st = { n, base: semilla, score: 0, lives: vidasIniciales(n), mejor: { p: 0, f: 1 }, soltado: false, lvl: Math.max(1, opciones.nivel | 0 || 1), ronda: 0, semilla, prueba: prueba.length ? prueba : null, pruebaI: 0, eventos: [], bono: 0, proximaVida: VIDAS_EXTRA[0] };
+  reset(st, true);
   return st;
 }
 
@@ -355,8 +421,9 @@ export function crear(n, semilla = (Date.now() ^ (performance.now() * 1000)) | 0
 export function paso(st, entradas, dt) {
   guardarAnterior(st);
   if (st.state === 'ready') { st.t -= dt; if (st.t <= 0) { st.state = 'play'; ev(st, 'listo'); } return; }
-  if (st.state === 'dead') { st.t -= dt; if (st.t <= 0) { if (st.lives <= 0) { st.state = 'over'; st.t = 1; ev(st, 'fin'); } else reset(st); } return; }
-  if (st.state === 'clear') { st.t -= dt; if (st.t <= 0) { st.lvl++; reset(st); } return; }
+  if (st.state === 'dead') { st.t -= dt; if (st.t <= 0) { if (st.lives <= 0) empezarContinuar(st); else reset(st); } return; }
+  if (st.state === 'continuar') { pasoContinuar(st, entradas, dt); return; }
+  if (st.state === 'clear') { st.t -= dt; if (st.t <= 0) { st.lvl++; reset(st, true); } return; }
   if (st.state === 'over') { st.t -= dt; if (st.t <= 0 && st.ps.some((p, i) => entradas[i].a)) st.state = 'again'; return; }
   if (st.state !== 'play') return;
 
@@ -517,7 +584,7 @@ export function codificar(st) {
   for (const j of st.textos) x.push(Math.round(j.x), Math.round(j.y), j.k, j.v, Math.round(j.t * 10));
   return {
     m: ESTADOS.indexOf(st.state), t: Math.round(st.t * 10), v: st.lvl, sc: st.score, li: st.lives, h: st.hit, c: Math.round(st.congelado * 10),
-    ti: Math.round(st.tiempo * 10), bo: st.bono, b, p, q, o, x, k: bloquesPlanos(st.bloques),
+    ti: Math.round(st.tiempo * 10), bo: st.bono, b, p, q, o, x, k: bloquesPlanos(st.bloques), mp: st.mejor.p, mf: st.mejor.f,
   };
 }
 
@@ -534,6 +601,7 @@ export function decodificar(d) {
     n: 2, state: ESTADOS[d.m] || 'play', t: (+d.t || 0) / 10, lvl: +d.v || 1, score: +d.sc || 0, lives: +d.li || 0, hit: +d.h,
     congelado: Math.max(0, Math.min(RELOJ_SEG, (+d.c || 0) / 10)), ronda: 0, balls: [], ps: [], pop: [], objetos: [],
     tiempo: Math.max(0, Math.min(TIEMPO_MAX, (+d.ti || 0) / 10)), bono: Math.max(0, +d.bo || 0), textos: [], bloques: [],
+    mejor: { p: Math.max(0, Math.min(1e9, d.mp | 0)), f: Math.max(1, Math.min(999, d.mf | 0)) },
   };
   if (Array.isArray(d.k)) for (let i = 0; i + 4 < d.k.length && s.bloques.length < MAX_BLOQUES; i += 5) {
     const w = +d.k[i + 2], h = +d.k[i + 3];

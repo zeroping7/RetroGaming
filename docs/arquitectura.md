@@ -20,6 +20,7 @@ juegos/
     portada.svg          # etiqueta del cartucho, sin texto
     icono.png            # favicon del juego (opcional)
     sim.js render.js tests.html   # estructura para juegos nuevos (constitución A1, Q3)
+    fases.js records.js           # (Revienta Burbujas) fases diseñadas y tabla de récords
 sw.js  manifest.webmanifest  icon-192.png  icon-512.png   # app instalable de todo el sitio
 docs/  CLAUDE.md
 specs/
@@ -61,6 +62,8 @@ Opciones según el registro: **1 jugador**, **2 jugadores** (mismo dispositivo),
 - El anfitrión ve el código en grande y espera; cuando llega el invitado, la partida empieza sola.
 - El invitado escribe el código; si en 15 s no hay respuesta: "No hay ninguna partida con ese código".
 - **Enlace (D-008):** mientras espera, el anfitrión ve "COMPARTIR ENLACE" (`navigator.share`, o copiar si no existe). `juegos/<id>/?sala=CODIGO` entra directo como invitado; `enlaceDePartida()` y `codigoDeUrl()` están en `src/net/sala.js`.
+- **Con mando y teclado (C3):** arriba/abajo eligen opción (se marca con un borde amarillo), A la pulsa y B vuelve atrás. También en la pausa común. Revienta Burbujas lo hace con `crearEntradas({ alPulsar })` de `src/input/entradas.js`.
+- Revienta Burbujas añade **Récords** (top 10 en `localStorage` `rb-records`, ver spec 004).
 - Si se deja de recibir durante 4 s, ambos pasan a "Esperando…" hasta que vuelve la conexión; si la partida ya había empezado, el anfitrión la guarda en pausa (plan de 000, §8).
 
 ## 5. Online en tiempo real
@@ -71,7 +74,7 @@ Opciones según el registro: **1 jugador**, **2 jugadores** (mismo dispositivo),
 
 **Módulo:** todo lo genérico vive en `src/net/sala.js` (API en el plan de 000, §4). Los juegos lo cargan con `import('../../src/net/sala.js')`; la sala carga MQTT.js sola.
 
-**Temas MQTT:** `<id-juego>/v<versión-protocolo>/<CÓDIGO>/in` (invitado → anfitrión) y `/st` (anfitrión → invitado). Revienta Burbujas usa la versión 8 (mejoras arcade, spec 004).
+**Temas MQTT:** `<id-juego>/v<versión-protocolo>/<CÓDIGO>/in` (invitado → anfitrión) y `/st` (anfitrión → invitado). Revienta Burbujas usa la versión 9 (mejoras arcade, spec 004: continuar y récords).
 
 **Mensajes**
 - Invitado → anfitrión: `{n, l, r, f, ...}` — secuencia + estado de los botones. Se envía al cambiar algo y, además, cada 50 ms si se mueve o cada 500 ms si está quieto.

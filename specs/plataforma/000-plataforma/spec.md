@@ -37,7 +37,7 @@ Abrir la web desde cualquier dispositivo, elegir un juego como en una consola re
 
 **HU-6 — Controles.** Como jugador, quiero usar táctil, teclado o mando indistintamente.
 - [x] En el menú principal funcionan los tres.
-- [ ] En el menú de cada juego también funciona el mando (constitución C3).
+- [x] En el menú de cada juego también funciona el mando (constitución C3).
 
 **HU-7 — Pausa.** Como jugador, quiero pausar sin perder la partida.
 - [x] `Start` / `Esc` / `P` / botón ⏸ abre una pausa con "Continuar" y "Salir"; online, pausa a los dos y se ve quién la ha pausado.

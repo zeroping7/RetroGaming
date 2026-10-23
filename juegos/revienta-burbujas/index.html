@@ -45,6 +45,20 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 #pausa i{display:inline-block;width:4px;height:14px;background:currentColor;margin:0 2px;vertical-align:middle}
 #pausa{position:absolute;top:5px;right:110px;z-index:2;font-size:16px;line-height:1;padding:7px 8px;border:0;border-radius:6px;background:rgba(0,0,0,.4);color:var(--fg);cursor:pointer}
 #quit{position:absolute;top:8px;right:8px;font:inherit;font-size:8px;padding:8px;border:0;border-radius:6px;background:rgba(0,0,0,.4);color:var(--fg);cursor:pointer}
+/* récords (spec 004, bloque D) */
+#recs ol{list-style:none;margin:0;padding:0;width:280px;max-width:100%;font-size:9px;line-height:1}
+#recs li{display:grid;grid-template-columns:28px 1fr auto 44px;gap:6px;padding:7px 8px;border-radius:6px}
+#recs li:nth-child(odd){background:rgba(26,22,64,.85)}
+#recs li.nuevo{background:var(--accent);color:#2a1b00}
+#recs li span:nth-child(3),#recs li span:nth-child(4){text-align:right}
+#recs .cab{font-size:7px;color:var(--muted);background:none!important}
+.capa{background:rgba(13,11,31,.95);border-radius:6px}
+#letras{display:flex;gap:10px}
+#letras button{width:52px;padding:14px 0;font-size:22px;background:var(--panel);color:var(--fg);border:3px solid var(--panel)}
+#letras button.act{border-color:var(--accent);color:var(--accent)}
+#letras button.ok{color:var(--p1)}
+/* menús con mando (constitución C3): la opción elegida se marca aunque no haya foco visible */
+.menu button.sel,.capa-pausa button.sel,.menu input.sel{outline:3px solid var(--accent);outline-offset:2px}
 @media (hover:hover) and (pointer:fine){#pads{display:none}}
 </style>
 </head>
@@ -63,6 +77,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
     <h2>ONLINE · CADA UNO SU MÓVIL</h2>
     <button id="mh" class="b3">CREAR PARTIDA</button>
     <button id="mj" class="bq">UNIRSE CON CÓDIGO</button>
+    <button id="mrec" class="bq">RÉCORDS</button>
     <p id="mmsg"></p>
     <button id="mhome" class="bq home">◀ MENÚ RETROGAMING</button>
   </div>
@@ -73,6 +88,18 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
     <button id="jgo" class="b3">ENTRAR</button>
     <button id="jback" class="bq">VOLVER</button>
     <p id="jmsg"></p>
+  </div>
+  <div class="menu capa" id="recs" hidden>
+    <h1>RÉCORDS</h1>
+    <ol id="rlist"></ol>
+    <p id="rvacio">Aún no hay récords. ¡Juega una partida!</p>
+    <button id="rback" class="bq">VOLVER</button>
+  </div>
+  <div class="menu capa" id="ini" hidden>
+    <h1>¡NUEVO<br>RÉCORD!</h1>
+    <p id="iquien"></p>
+    <div id="letras"><button data-i="0">A</button><button data-i="1">A</button><button data-i="2">A</button></div>
+    <p>◀ ▶ cambian la letra<br>DISPARO la confirma</p>
   </div>
 </div>
 <div id="pads">
@@ -88,6 +115,8 @@ import { dibujar } from './render.js';
 import { crearAudio } from '../../src/audio/sintetizador.js';
 import { RECETAS } from './sonidos.js';
 import { crearPausa } from '../../src/pantalla/pausa.js';
+import { crearEntradas } from '../../src/input/entradas.js';
+import { leer as leerRecords, guardar as guardarRecords, entra, insertar, LETRAS } from './records.js';
 
 const cv=document.getElementById('c'),x=cv.getContext('2d'),$=id=>document.getElementById(id);
 const keys=[{l:false,r:false,f:false},{l:false,r:false,f:false}];
@@ -142,6 +171,7 @@ function pintarPausa(){
   if(pz===3)pantallaPausa.mostrar('PAUSA',mode==='host'?'Esperando a tu compañero…':'Reconectando…',false);
   else if(mode==='local')pantallaPausa.mostrar('PAUSA');
   else pantallaPausa.mostrar('PAUSA',pz===yo?'Has pausado tú':'Ha pausado tu compañero');
+  enfocarSiMando(document.querySelector('.capa-pausa'));
 }
 $('pausa').onclick=e=>{e.stopPropagation();pedirPausa(true);$('pausa').blur()};
 addEventListener('keydown',e=>{
@@ -161,9 +191,10 @@ const PRUEBA=(()=>{const q=new URLSearchParams(location.search).get('objetos');i
 const NIVEL=Math.max(1,Math.min(99,parseInt(new URLSearchParams(location.search).get('nivel'),10)||1));
 function newGame(n){st=crear(n,undefined,{prueba:PRUEBA,nivel:NIVEL});pausa=0;for(const k of keys){k.l=k.r=k.f=false}guestX=null;ronda=st.ronda}
 function update(dt){
+  const bloq=entradaBloqueada();
   for(let i=0;i<st.n;i++){
     const k=mode==='host'&&i===1?guestIn:keys[i],e=ent[i];
-    e.left=k.l;e.right=k.r;e.a=k.f;e.x=undefined;
+    e.left=k.l&&!bloq;e.right=k.r&&!bloq;e.a=k.f&&!bloq;e.x=undefined;
     // invitado online: hacia su última posición conocida, adelantada por el retardo
     if(mode==='host'&&i===1&&guestX!==null){
       const since=Math.min(0.5,guestLat+(performance.now()-guestXAt)/1000);
@@ -177,6 +208,7 @@ function update(dt){
     st.eventos.length=0;
   }
   if(st.ronda!==ronda){ronda=st.ronda;guestX=null}
+  vigilarFin(st,mode==='local'&&st.n===2?[0,1]:[0]);
   if(st.state==='again'){if(mode==='local')toMenu();else newGame(2);return}
   if(st.score>best){best=st.score;try{localStorage.setItem('rb-best',best)}catch(e){}}
 }
@@ -196,7 +228,7 @@ async function openSala(c,asHost,onFail){
   const gen=++netGen;
   try{
     const net=await import('../../src/net/sala.js');
-    const s=await net.crearSala({juego:'revienta-burbujas',version:8,codigo:c||net.codigoAleatorio(),escuchar:[asHost?'in':'st'],anfitrion:asHost});
+    const s=await net.crearSala({juego:'revienta-burbujas',version:9,codigo:c||net.codigoAleatorio(),escuchar:[asHost?'in':'st'],anfitrion:asHost});
     if(gen!==netGen){s.cerrar();return null}
     sala=s;s.alRecibir(onMsg);return s;
   }catch(e){if(gen===netGen)onFail(e.message&&e.message.startsWith('No se pudo')?e.message:'Sin conexión: el modo online necesita internet.');return null}
@@ -209,7 +241,7 @@ function joinGame(c){
   const m=$('jmsg');m.className='';m.textContent='Entrando…';code=c;
   openSala(c,false,t=>{m.className='err';m.textContent=t}).then(s=>{if(s){enterOnline(false,c);joinStart=performance.now();lastSent=''}});
 }
-function sendIn(){const k=keys[0];const m={l:k.l,r:k.r,f:k.f,pn:pedidoN,pv:pedidoV?1:0};if(gview&&gview.ps&&gview.ps[1]&&gview.state==='play'){m.x=Math.round(gview.ps[1].x);m.d=(k.r?1:0)-(k.l?1:0)}sala.enviar('in',m)}
+function sendIn(){const k=entradaBloqueada()?SUELTO:keys[0];const m={l:k.l,r:k.r,f:k.f,pn:pedidoN,pv:pedidoV?1:0};if(gview&&gview.ps&&gview.ps[1]&&gview.state==='play'){m.x=Math.round(gview.ps[1].x);m.d=(k.r?1:0)-(k.l?1:0)}sala.enviar('in',m)}
 function netTick(dt){
   const now=performance.now();
   if(mode==='host'){
@@ -223,7 +255,7 @@ function netTick(dt){
     return true;
   }
   if(!sala)return false;
-  const k=keys[0],s=(k.l?1:0)+(k.r?2:0)+(k.f?4:0)+'';
+  const k=entradaBloqueada()?SUELTO:keys[0],s=(k.l?1:0)+(k.r?2:0)+(k.f?4:0)+'';
   const moving=k.l||k.r;
   if(s!==lastSent||now-helloAt>(moving?50:500)){lastSent=s;helloAt=now;sendIn()}
   if(heardAt&&now-heardAt<4000){guestStep(dt);st=gview||{state:'wait'}}
@@ -259,12 +291,13 @@ function guestStep(dt){
         }
       }
       gview=s;
+      if(s)vigilarFin(s,[0]);
     }
   }
   const v=gview;if(!v||!v.ps||v.ps.length<2)return;
   if(pausaRed)return; // en pausa no se predice nada
   if(v.state!=='play'){v.t-=dt;return}
-  const me=v.ps[1],k=keys[0];
+  const me=v.ps[1],k=entradaBloqueada()?SUELTO:keys[0];
   if(k.l)me.x-=VEL_JUGADOR*dt;if(k.r)me.x+=VEL_JUGADOR*dt;me.x=Math.max(13,Math.min(W-13,me.x));
   if(k.f&&disparar(me)){localShotAt=now;audio.tocar('disparo')}
   hostTargetX=Math.max(13,Math.min(W-13,hostTargetX+hostDir*VEL_JUGADOR*dt));
@@ -284,6 +317,7 @@ function draw(){
   const sh=$('share'),ver=mode==='host'&&st.state==='wait';if(sh.hidden===ver)sh.hidden=!ver;
   const bp=$('pausa'),vp=enPartida();if(bp.hidden===vp)bp.hidden=!vp;
   pintarPausa();
+  if(soltarFuego&&!keys[0].f&&!keys[1].f)soltarFuego=false;
   vista.modo=mode;vista.alfa=mode==='guest'?1:alfa;vista.codigo=code;vista.record=best;vista.ahora=performance.now();
   vista.servidores=netInfo();vista.red=vista.servidores+(sala&&sala.retardoMedido?'  '+Math.round(sala.retardo)+'ms':'');
   dibujar(x,st,vista);
@@ -294,6 +328,8 @@ function hideMenus(){$('menu').hidden=true;$('join').hidden=true}
 function toMenu(){
   closeNet();mode='menu';st={state:'menu'};pantallaPausa.ocultar();pausaPintada='';
   $('menu').hidden=false;$('join').hidden=true;$('pad2').hidden=true;$('quit').hidden=true;$('mmsg').textContent='';
+  $('recs').hidden=true;$('ini').hidden=true;ini=null;finVisto=false;
+  enfocarSiMando($('menu'));
 }
 function startLocal(n){mode='local';newGame(n);hideMenus();$('pad2').hidden=n<2;$('quit').hidden=false}
 $('m1').onclick=()=>startLocal(1);
@@ -301,6 +337,7 @@ $('m2').onclick=()=>startLocal(2);
 $('mh').onclick=()=>{closeNet();host($('mmsg'))};
 $('mj').onclick=()=>{$('menu').hidden=true;$('join').hidden=false;$('jmsg').textContent='';$('code').value='';$('code').focus()};
 $('jback').onclick=toMenu;
+$('mrec').onclick=()=>{$('menu').hidden=true;mostrarRecords(-1)};
 function doJoin(){const c=$('code').value.trim().toUpperCase();
   if(!/^[A-Z0-9]{4}$/.test(c)){$('jmsg').className='err';$('jmsg').textContent='El código tiene 4 letras o números.';return}
   closeNet();joinGame(c)}
@@ -323,6 +360,117 @@ const toLauncher=()=>{closeNet();location.href='../../'};
 $('mhome').onclick=toLauncher;
 addEventListener('keydown',e=>{if(e.key==='Escape'&&mode==='menu'&&!$('menu').hidden)toLauncher()});
 
+/* ---------- récords (spec 004, bloque D) ---------- */
+// Al acabar la partida, si lo mejor que se hizo (sim.js: st.mejor) entra en el top 10, se piden
+// las iniciales: ◀ ▶ cambian la letra y disparo la confirma (teclado, mando o botones táctiles).
+// Con 2 jugadores en el mismo móvil, primero J1 y luego J2, en una sola entrada. Online, cada
+// móvil guarda la suya con sus iniciales.
+const SUELTO={l:false,r:false,f:false};
+let ini=null,finVisto=false,soltarFuego=false;
+function entradaBloqueada(){return !!ini||soltarFuego||(!$('recs').hidden&&mode!=='menu')}
+function vigilarFin(s,jugadores){
+  if(s.state!=='over'){finVisto=false;return}
+  if(finVisto)return;finVisto=true;
+  const m=s.mejor||{p:s.score,f:s.lvl};
+  if(entra(leerRecords(),m.p))abrirIniciales(jugadores,m);
+}
+function inicialesGuardadas(j){try{const v=(localStorage.getItem(j?'rb-iniciales2':'rb-iniciales')||'').toUpperCase();if(/^[A-Z0-9]{3}$/.test(v))return[...v].map(c=>LETRAS.indexOf(c))}catch(e){}return[0,0,0]}
+function abrirIniciales(jugadores,m){
+  ini={jugadores,idx:0,pos:0,letras:inicialesGuardadas(jugadores[0]),partes:[],p:m.p,f:m.f,prev:null,rep:0};
+  pantallaPausa.ocultar();$('ini').hidden=false;pintarIniciales();
+}
+function teclasDe(j){return keys[mode==='local'?j:0]}
+function pintarIniciales(){
+  const j=ini.jugadores[ini.idx],dos=ini.jugadores.length>1;
+  $('iquien').textContent=(dos?'J'+(j+1)+' · ':'')+ini.p+' PUNTOS · NIVEL '+ini.f;
+  $('letras').querySelectorAll('button').forEach((b,i)=>{b.textContent=LETRAS[ini.letras[i]];b.classList.toggle('act',i===ini.pos);b.classList.toggle('ok',i<ini.pos)});
+}
+function cambiarLetra(d){ini.letras[ini.pos]=(ini.letras[ini.pos]+d+LETRAS.length)%LETRAS.length;audio.tocar('aviso');pintarIniciales()}
+function confirmarLetra(){
+  ini.pos++;audio.tocar('disparo');
+  if(ini.pos<3){pintarIniciales();return}
+  const j=ini.jugadores[ini.idx],txt=ini.letras.map(i=>LETRAS[i]).join('');
+  ini.partes.push(txt);try{localStorage.setItem(j?'rb-iniciales2':'rb-iniciales',txt)}catch(e){}
+  if(++ini.idx<ini.jugadores.length){ini.pos=0;ini.letras=inicialesGuardadas(ini.jugadores[ini.idx]);ini.prev=null;pintarIniciales();return}
+  const r=insertar(leerRecords(),{p:ini.p,i:ini.partes.join('/'),f:ini.f});
+  guardarRecords(r.lista);ini=null;$('ini').hidden=true;audio.tocar('vida');
+  mostrarRecords(r.pos);
+}
+// Cada fotograma: flancos de ◀ ▶ y disparo del jugador que escribe (repite al mantener ◀ ▶)
+function pasoIniciales(t){
+  if(!ini)return;
+  const k=teclasDe(ini.jugadores[ini.idx]);
+  if(!ini.prev){ini.prev={l:k.l,r:k.r,f:k.f};return} // lo que ya venía pulsado no cuenta
+  const p=ini.prev;
+  for(const [c,d] of [['l',-1],['r',1]]){
+    if(k[c]&&!p[c]){cambiarLetra(d);ini.rep=t+350}
+    else if(k[c]&&t>=ini.rep){cambiarLetra(d);ini.rep=t+110}
+  }
+  if(k.f&&!p.f)confirmarLetra();
+  if(ini){p.l=k.l;p.r=k.r;p.f=k.f}
+}
+// Táctil: tocar la letra que se está eligiendo la avanza; tocar una ya hecha vuelve a ella
+$('letras').querySelectorAll('button').forEach(b=>b.addEventListener('pointerdown',e=>{
+  e.preventDefault();if(!ini)return;const i=+b.dataset.i;
+  if(i<ini.pos){ini.pos=i;pintarIniciales()}else if(i===ini.pos)cambiarLetra(1);
+}));
+function mostrarRecords(destacar){
+  const l=leerRecords(),ol=$('rlist');ol.textContent='';
+  const fila=(cls,a,b,c,d)=>{const li=document.createElement('li');if(cls)li.className=cls;for(const v of[a,b,c,d]){const sp=document.createElement('span');sp.textContent=v;li.append(sp)}ol.append(li)};
+  if(l.length)fila('cab','','NOMBRE','PUNTOS','NIVEL');
+  l.forEach((e,i)=>fila(i===destacar?'nuevo':'',(i+1)+'.',e.i,String(e.p),String(e.f)));
+  $('rvacio').hidden=l.length>0;
+  $('rback').textContent=mode==='menu'?'VOLVER':'SEGUIR';
+  $('recs').hidden=false;enfocarSiMando($('recs'));
+}
+$('rback').onclick=()=>{
+  $('recs').hidden=true;
+  if(mode==='menu'){$('menu').hidden=false;enfocarSiMando($('menu'))}
+  else if(mode==='local')toMenu();
+  else soltarFuego=true; // online: sigue en «fin de partida»; el disparo que cerró esto no cuenta
+};
+
+/* ---------- navegación de menús con teclado y mando (constitución C3, T013 de 000) ---------- */
+// Arriba/abajo (o izquierda/derecha) eligen opción, A la pulsa y B vuelve atrás. El teclado,
+// además, sigue funcionando como siempre (Tab, Enter y Espacio).
+function contenedorActivo(){
+  if(pantallaPausa.visible)return document.querySelector('.capa-pausa');
+  if(ini)return null;
+  if(!$('recs').hidden)return $('recs');
+  if(mode!=='menu')return null;
+  for(const id of['join','menu'])if(!$(id).hidden)return $(id);
+  return null;
+}
+function opciones(c){return[...c.querySelectorAll('button,input')].filter(e=>!e.hidden&&e.offsetParent!==null&&!e.disabled)}
+function marcar(el){document.querySelectorAll('.sel').forEach(e=>e.classList.remove('sel'));if(!el)return;el.classList.add('sel');el.focus({preventScroll:true})}
+function moverSel(c,d){const l=opciones(c);if(!l.length)return;let i=l.indexOf(document.activeElement);i=i<0?0:(i+d+l.length)%l.length;marcar(l[i])}
+function enfocarSiMando(c){if(entradasMenu&&entradasMenu.dispositivo==='mando')marcar(opciones(c).find(e=>e.tagName==='BUTTON'))}
+function atras(c){
+  if(c===$('join')){toMenu();return true}
+  if(c===$('recs')){$('rback').click();return true}
+  return false;
+}
+let entradasMenu=null;
+entradasMenu=crearEntradas({
+  alPulsar(acc,_j,info){
+    const c=contenedorActivo();if(!c)return false;
+    const pausa=c.classList.contains('capa-pausa');
+    if(acc==='up'||acc==='left'){moverSel(c,-1);return true}
+    if(acc==='down'||acc==='right'){moverSel(c,1);return true}
+    if(info.repeticion)return false;
+    if(acc==='b')return atras(c);
+    if(acc==='a'||(acc==='start'&&!pausa&&info.codigo!=='Escape')){
+      const el=document.activeElement,dentro=el&&c.contains(el)&&(el.tagName==='BUTTON'||el.tagName==='INPUT');
+      if(info.origen==='teclado'&&dentro)return false; // el navegador ya pulsa el botón con foco
+      if(pausa&&pausaActual()===3)return false;          // esperando al compañero: que un disparo no saque de la partida
+      if(dentro&&el.tagName==='BUTTON'){el.click();return true}
+      moverSel(c,0);return true;
+    }
+    return false;
+  },
+});
+addEventListener('pointerdown',()=>marcar(null),{passive:true,capture:true});
+
 /* ---------- mandos físicos ---------- */
 const prev=[{},{}];
 function pollPads(){
@@ -330,9 +478,8 @@ function pollPads(){
   gps.slice(0,2).forEach((g,i)=>{
     const ax=g.axes[0]||0,bt=j=>!!(g.buttons[j]&&g.buttons[j].pressed);
     const now={l:ax<-.4||bt(14),r:ax>.4||bt(15),f:bt(0)||bt(1)||bt(2)||bt(3),s:bt(9)};
-    // Start: pausa / sigue. En pausa, A también sigue
+    // Start: pausa / sigue. En pausa, A pulsa la opción elegida (navegación de menús, más abajo)
     if(now.s&&!prev[i].s&&enPartida())pedirPausa(!pausaActual());
-    else if(now.f&&!prev[i].f&&pausaActual()&&pausaActual()!==3)pedirPausa(false);
     const slot=mode==='local'?i:0;
     if(mode!=='menu'&&(mode==='local'||i===0))for(const k of['l','r','f'])if(now[k]!==prev[i][k])keys[slot][k]=now[k];
     prev[i]=now;
@@ -345,7 +492,7 @@ function pollPads(){
 const TICK=1/60,MAX_TICKS=8;
 let last=performance.now(),acc=0,alfa=1;
 function loop(t){
-  const dt=Math.min(0.25,Math.max(0,(t-last)/1000));last=t;pollPads();
+  const dt=Math.min(0.25,Math.max(0,(t-last)/1000));last=t;pollPads();pasoIniciales(t);
   if(mode==='local'||mode==='host'){
     acc+=dt;let n=0;
     while(acc>=TICK&&n<MAX_TICKS){
@@ -376,7 +523,7 @@ document.querySelectorAll('.pad button').forEach(b=>{
 document.addEventListener('contextmenu',e=>e.preventDefault());
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('../../sw.js').catch(()=>{}));
 // Para pruebas automáticas: lectura del estado interno (no se usa en el juego)
-window.__rb={get mode(){return mode},get code(){return code},get st(){return st},get sala(){return sala},get gview(){return gview},get lastSnap(){return lastSnap},keys,netInfo:()=>netInfo()};
+window.__rb={get ini(){return ini},get mode(){return mode},get code(){return code},get st(){return st},get sala(){return sala},get gview(){return gview},get lastSnap(){return lastSnap},keys,netInfo:()=>netInfo()};
 </script>
 </body>
 </html>

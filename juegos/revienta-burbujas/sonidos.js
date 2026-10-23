@@ -67,6 +67,14 @@ export const RECETAS = {
     s.ruido({ dur: 0.18, de: 2500, a: 150, vol: 0.55 });
     s.tono({ tipo: 'square', de: 220, a: 90, dur: 0.12, vol: 0.2 });
   },
+  // empieza un mundo (spec 004, bloque C): fanfarria corta
+  mundo(s) {
+    s.notas([[DO, 0.1], [SOL, 0.1], [DO2, 0.1], [SOL, 0.08], [DO2, 0.3]], { tipo: 'square', vol: 0.18 });
+  },
+  // se sigue jugando tras «¿CONTINUAR?» (bloque D)
+  continua(s) {
+    s.notas([[SOL, 0.06], [DO2, 0.06], [MI * 2, 0.14]], { vol: 0.22 });
+  },
   fin(s) {
     s.notas([[LA3 * 2, 0.18], [FA3 * 2, 0.18], [RE3 * 2, 0.18], [LA3, 0.45]], { tipo: 'triangle', vol: 0.4 });
   },

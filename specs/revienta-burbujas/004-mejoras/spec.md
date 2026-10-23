@@ -1,6 +1,6 @@
 # Spec de funcionalidad: Mejoras arcade de Revienta Burbujas
 
-> **ID:** 004-mejoras · **Estado:** Aprobada · **Fecha:** 2026-10-22
+> **ID:** 004-mejoras · **Estado:** Implementada (v0.12.0) · **Fecha:** 2026-10-22
 > Mecánicas clásicas del género, con diseño propio: fases, fondos, frutas y gráficos inventados (AR2). No se usa material del juego original.
 > El juego de puzzle/tablero pasa a ser la spec 005.
 

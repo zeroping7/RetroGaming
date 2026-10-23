@@ -1,5 +1,6 @@
 // Dibujo de Revienta Burbujas en canvas 2D. Solo lee el estado: nunca lo cambia.
-import { W, H, FLOOR, R, TIPOS, ARMAS, TAM_OBJETO, OBJ_EN_SUELO, OBJ_PARPADEO, AVISO_TIEMPO } from './sim.js';
+import { W, H, FLOOR, R, TIPOS, ARMAS, TAM_OBJETO, OBJ_EN_SUELO, OBJ_PARPADEO, AVISO_TIEMPO, READY_SEG } from './sim.js';
+import { MUNDOS, mundoDe, fondoDe } from './fases.js';
 
 const COL = ['', '#ff6fae', '#5ee6c2', '#6fa8ff', '#ff7a4d'];
 const PCOL = [{ body: '#2ec4b6', hat: '#e94f37', shot: '#ffcf3a' }, { body: '#ff8fc7', hat: '#7b5cff', shot: '#ff8fc7' }];
@@ -124,12 +125,80 @@ function txt(x, s, y, size, col) {
   x.fillStyle = col || '#f4f1ff'; x.font = `${size}px ${FUENTE}`; x.textAlign = 'center'; x.fillText(s, W / 2, y);
 }
 
-function fondo(x) {
-  const g = x.createLinearGradient(0, 0, 0, FLOOR);
-  g.addColorStop(0, '#241d5c'); g.addColorStop(1, '#0f0c2b');
-  x.fillStyle = g; x.fillRect(0, 0, W, H);
-  x.fillStyle = '#3a2f86'; x.fillRect(0, FLOOR, W, H - FLOOR);
-  x.fillStyle = '#5446b8'; for (let i = 0; i < W; i += 20) x.fillRect(i, FLOOR, 10, 4);
+// Fondos (spec 004, bloque C): uno por mundo, dibujados con formas (AR2) una sola vez en un
+// canvas aparte y copiados en cada fotograma, para no rehacer degradados 60 veces por segundo (R1).
+// Colores apagados para que las burbujas destaquen. -1 = menú y esperas.
+const SUELO = [['#3a2f86', '#5446b8'], ['#2f5a2a', '#4f8a3c'], ['#7a5326', '#b07a3a'], ['#173a5e', '#2a6496'], ['#3a1414', '#7a2a12']];
+const cacheFondo = [];
+
+function degradado(c, a, b) {
+  const g = c.createLinearGradient(0, 0, 0, FLOOR);
+  g.addColorStop(0, a); g.addColorStop(1, b);
+  c.fillStyle = g; c.fillRect(0, 0, W, FLOOR);
+}
+function colinas(c, col, base, alto, paso, fase) {
+  c.fillStyle = col; c.beginPath(); c.moveTo(0, FLOOR);
+  for (let px = 0; px <= W; px += 10) c.lineTo(px, base - alto * (0.5 + 0.5 * Math.sin(px / paso + fase)));
+  c.lineTo(W, FLOOR); c.closePath(); c.fill();
+}
+
+function pintarFondo(c, i) {
+  if (i === 0) { // Pradera: anochecer, sol poniéndose tras las colinas, nubes
+    degradado(c, '#1c1745', '#4b3a70');
+    c.fillStyle = '#c9714a'; c.beginPath(); c.arc(300, 405, 48, Math.PI, 0); c.fill();
+    c.fillStyle = 'rgba(201,113,74,.35)'; c.fillRect(252, 404, 96, 3); c.fillRect(262, 396, 76, 2);
+    c.fillStyle = 'rgba(255,255,255,.12)';
+    for (const [nx, ny] of [[70, 80], [210, 150], [120, 230]]) { c.beginPath(); c.ellipse(nx, ny, 34, 10, 0, 0, 7); c.ellipse(nx + 22, ny - 6, 22, 9, 0, 0, 7); c.fill(); }
+    colinas(c, '#2c2a55', 430, 70, 60, 0.5);
+    colinas(c, '#1f3d36', 480, 45, 40, 2);
+  } else if (i === 1) { // Desierto: atardecer, mesetas y cactus
+    degradado(c, '#3b1f4a', '#a2513a');
+    c.fillStyle = '#c96a3a'; c.beginPath(); c.arc(90, 380, 46, Math.PI, 0); c.fill();
+    c.fillStyle = '#5a2d3a';
+    c.fillRect(30, 380, 110, 140); c.fillRect(20, 372, 130, 10);
+    c.fillRect(250, 340, 130, 180); c.fillRect(240, 332, 150, 10);
+    colinas(c, '#6e3a2c', 490, 30, 70, 1);
+    c.fillStyle = '#2f4a2a';
+    for (const cx of [190, 360]) { c.fillRect(cx, 452, 8, 40); c.fillRect(cx - 10, 466, 8, 4); c.fillRect(cx - 10, 456, 4, 12); c.fillRect(cx + 10, 462, 8, 4); c.fillRect(cx + 14, 450, 4, 14); }
+  } else if (i === 2) { // Océano: noche, luna, olas y burbujitas de fondo
+    degradado(c, '#081a33', '#0f3a5c');
+    c.fillStyle = 'rgba(230,240,255,.3)'; c.beginPath(); c.arc(80, 90, 26, 0, 7); c.fill();
+    c.fillStyle = '#081a33'; c.beginPath(); c.arc(92, 82, 22, 0, 7); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.25)';
+    for (let n = 0; n < 30; n++) c.fillRect((n * 137) % W, (n * 71) % 260, 2, 2);
+    for (let f = 0; f < 3; f++) colinas(c, ['#0f3557', '#123f66', '#164a75'][f], 400 + f * 40, 14, 18 + f * 6, f * 2);
+    c.strokeStyle = 'rgba(180,220,255,.18)'; c.lineWidth = 1;
+    for (const [bx, by, br] of [[40, 470, 5], [60, 440, 3], [330, 460, 6], [350, 430, 3], [210, 490, 4]]) { c.beginPath(); c.arc(bx, by, br, 0, 7); c.stroke(); }
+  } else if (i === 3) { // Volcán: cielo rojo oscuro, volcán y brillo de lava
+    degradado(c, '#1a0a12', '#4a1414');
+    const brillo = c.createRadialGradient(200, 270, 10, 200, 270, 170);
+    brillo.addColorStop(0, 'rgba(255,110,40,.35)'); brillo.addColorStop(1, 'rgba(255,110,40,0)');
+    c.fillStyle = brillo; c.fillRect(0, 80, W, 380);
+    c.fillStyle = '#2a1012'; c.beginPath(); c.moveTo(40, FLOOR); c.lineTo(170, 260); c.lineTo(230, 260); c.lineTo(360, FLOOR); c.closePath(); c.fill();
+    c.fillStyle = '#d9541e'; c.fillRect(176, 258, 48, 6);
+    c.fillRect(196, 264, 6, 60); c.fillRect(204, 300, 5, 40);
+    c.fillStyle = 'rgba(70,40,45,.35)'; // humo: nubes bajas y anchas, que no parezcan burbujas
+    for (const [hx, hy, hr] of [[190, 230, 16], [220, 205, 22], [180, 175, 28]]) { c.beginPath(); c.ellipse(hx, hy, hr * 1.6, hr * 0.6, -0.2, 0, 7); c.fill(); }
+    colinas(c, '#200c0e', 495, 25, 30, 1);
+  } else { // menú y esperas
+    degradado(c, '#241d5c', '#0f0c2b');
+  }
+}
+
+function fondo(x, i) {
+  let f = cacheFondo[i + 1];
+  if (f === undefined) {
+    f = null;
+    try {
+      const c = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(W, FLOOR) : Object.assign(document.createElement('canvas'), { width: W, height: FLOOR });
+      pintarFondo(c.getContext('2d'), i); f = c;
+    } catch (e) { /* sin canvas aparte: se pinta directo */ }
+    cacheFondo[i + 1] = f;
+  }
+  if (f) x.drawImage(f, 0, 0); else pintarFondo(x, i);
+  const [a, b] = SUELO[i + 1];
+  x.fillStyle = a; x.fillRect(0, FLOOR, W, H - FLOOR);
+  x.fillStyle = b; for (let p = 0; p < W; p += 20) x.fillRect(p, FLOOR, 10, 4);
 }
 
 /** @param {CanvasRenderingContext2D} x @param {object} st estado (o {state:'menu'|'wait'}) @param {Vista} v */
@@ -137,7 +206,7 @@ export function dibujar(x, st, v) {
   const al = v.alfa;
   // Posición entre el tick anterior y el actual (si no hay anterior, la actual)
   const L = (antes, ahora) => (antes === undefined ? ahora : antes + (ahora - antes) * al);
-  fondo(x);
+  fondo(x, st.lvl ? fondoDe(st.lvl) : -1);
   if (st.state === 'menu') {
     const t = v.ahora / 1000; x.globalAlpha = 0.3;
     for (let i = 0; i < 4; i++) {
@@ -221,8 +290,25 @@ export function dibujar(x, st, v) {
     x.fillStyle = '#f4f1ff'; x.font = `12px ${FUENTE}`; x.textAlign = 'left'; x.fillText(String(Math.ceil(st.congelado)), W / 2 - 8, 50);
   }
   if (v.modo !== 'local') { x.fillStyle = '#a59fd6'; x.font = `7px ${FUENTE}`; x.textAlign = 'left'; x.fillText(v.red, 8, 14); }
-  if (st.state === 'ready') txt(x, 'NIVEL ' + st.lvl, 250, 18, '#ffcf3a');
+  if (st.state === 'ready') {
+    if (st.t > READY_SEG) { // empieza un mundo: «MUNDO N» y su nombre
+      const m = mundoDe(st.lvl);
+      x.fillStyle = 'rgba(13,11,31,.55)'; x.fillRect(0, 170, W, 120);
+      txt(x, 'MUNDO ' + m, 220, 22, '#ffcf3a');
+      txt(x, MUNDOS[(m - 1) % MUNDOS.length], 256, 12, '#f4f1ff');
+    } else txt(x, 'NIVEL ' + st.lvl, 250, 18, '#ffcf3a');
+  }
   if (st.state === 'clear') { txt(x, '¡LIMPIO! +500', 240, 16, '#5ee6c2'); if (st.bono) txt(x, 'TIEMPO +' + st.bono, 270, 10, '#ffcf3a'); }
   if (st.state === 'dead' && st.hit === -1) txt(x, '¡SE ACABÓ EL TIEMPO!', 250, 12, '#ff6b4a');
-  if (st.state === 'over') { txt(x, 'FIN DE PARTIDA', 230, 18, '#ff6fae'); txt(x, 'Pulsa disparo', 270, 10); }
+  if (st.state === 'continuar') { // sin vidas: cuenta atrás para seguir (spec 004, bloque D)
+    x.fillStyle = 'rgba(13,11,31,.7)'; x.fillRect(0, 0, W, FLOOR);
+    txt(x, '¿CONTINUAR?', 190, 18, '#ffcf3a');
+    txt(x, String(Math.max(0, Math.ceil(st.t))), 280, 56, Math.ceil(st.t) <= 3 ? '#ff6b4a' : '#f4f1ff');
+    txt(x, 'Pulsa disparo', 340, 10);
+    txt(x, 'Sigues en el nivel ' + st.lvl + ' con los puntos a 0', 366, 7, '#a59fd6');
+  }
+  if (st.state === 'over') {
+    x.fillStyle = 'rgba(13,11,31,.55)'; x.fillRect(0, 0, W, FLOOR);
+    txt(x, 'FIN DE PARTIDA', 230, 18, '#ff6fae'); txt(x, 'Pulsa disparo', 270, 10);
+  }
 }

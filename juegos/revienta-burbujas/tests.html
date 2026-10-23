@@ -21,7 +21,9 @@
 <p><a href="./">◀ Volver al juego</a></p>
 <script type="module">
 // Pruebas sin frameworks (constitución Q3): cada una monta un estado, avanza y comprueba.
-import { W, FLOOR, R, crear, paso, codificar, decodificar, soltarObjeto, TIPOS, ARMAS, AVISO_TIEMPO, COMBO_SEG, VEL_HEX, moverBurbujas, MAX_OBJETOS, OBJ_EN_SUELO, ESPERA_DISPARO, FIJO_SEG, SEP_TRIPLE, RAPIDO_SEG, RELOJ_SEG, EVENTOS } from './sim.js';
+import { W, FLOOR, R, crear, paso, codificar, decodificar, soltarObjeto, TIPOS, ARMAS, AVISO_TIEMPO, COMBO_SEG, VEL_HEX, moverBurbujas, MAX_OBJETOS, OBJ_EN_SUELO, ESPERA_DISPARO, FIJO_SEG, SEP_TRIPLE, RAPIDO_SEG, RELOJ_SEG, EVENTOS, MUNDO_SEG, READY_SEG, CONTINUAR_SEG } from './sim.js';
+import { FASES, MUNDOS, mundoDe, fondoDe, empiezaMundo } from './fases.js';
+import { entra, insertar, limpiar, leer, guardar, MAX_RECORDS } from './records.js';
 
 const pruebas = [];
 const prueba = (nombre, fn) => pruebas.push({ nombre, fn });
@@ -31,8 +33,9 @@ function cierto(v, que) { if (!v) throw new Error(que); }
 const nada = () => ({ left: false, right: false, a: false });
 const quietos = (st) => st.ps.map(nada);
 const DT = 1 / 60;
+const INICIO = MUNDO_SEG + 0.1; // la primera fase anuncia el mundo 1
 function avanzar(st, seg, entradas = quietos(st)) { for (let t = 0; t < seg; t += DT) paso(st, entradas, DT); }
-function jugando(n) { const st = crear(n); avanzar(st, 1.5); igual(st.state, 'play', 'tras la cuenta inicial'); return st; }
+function jugando(n) { const st = crear(n); avanzar(st, INICIO); igual(st.state, 'play', 'tras la cuenta inicial'); return st; }
 
 prueba('1 jugador empieza con 3 vidas, nivel 1 y una burbuja de tamaño 3', () => {
   const st = crear(1);
@@ -87,11 +90,13 @@ prueba('Si una burbuja toca al jugador, pierde una vida y se reinicia el nivel',
   igual(st.state, 'ready', 'vuelve a empezar'); cierto(st.ronda > ronda, 'cuenta como ronda nueva');
 });
 
-prueba('Sin vidas: fin de partida y, al pulsar disparo, pide otra', () => {
+prueba('Sin vidas: cuenta para continuar, fin de partida y, al pulsar disparo, pide otra', () => {
   const st = jugando(1);
   st.lives = 1;
   st.balls = [{ s: 2, x: st.ps[0].x, y: FLOOR - 20, vx: 0, vy: 0 }];
   avanzar(st, 1.4);
+  igual(st.state, 'continuar', 'primero, ¿continuar?');
+  avanzar(st, CONTINUAR_SEG + 0.1);
   igual(st.state, 'over', 'fase');
   avanzar(st, 1.1);
   paso(st, [{ left: false, right: false, a: true }], DT);
@@ -161,7 +166,7 @@ prueba('Cae un objeto aproximadamente en 1 de cada 8 burbujas', () => {
 
 prueba('Con la misma semilla caen los mismos objetos (repetible)', () => {
   const a = crear(1, 1234), b = crear(1, 1234);
-  avanzar(a, 1.5); avanzar(b, 1.5);
+  avanzar(a, INICIO); avanzar(b, INICIO);
   const na = reventar(a, 200), nb = reventar(b, 200);
   igual(na, nb, 'misma burbuja'); igual(a.objetos[0].tipo, b.objetos[0].tipo, 'mismo tipo');
 });
@@ -357,7 +362,7 @@ prueba('Reloj: congela las burbujas 5 s, siguen haciendo daño y se pueden rompe
 
 prueba('Modo de prueba: cae siempre un objeto, de los tipos pedidos y por turnos', () => {
   const st = crear(1, 7, { prueba: ['fijo', 'reloj'] });
-  avanzar(st, 1.5);
+  avanzar(st, INICIO);
   const tipos = [];
   for (let i = 0; i < 4; i++) {
     st.state = 'play'; st.tiempo = 1e9; st.objetos.length = 0; st.ps[0].arpones.length = 0;
@@ -384,7 +389,7 @@ const nombres = (st) => { const l = []; for (let i = 0; i < st.eventos.length; i
 
 prueba('Eventos: empezar, disparar, reventar (con tamaño), limpiar el nivel', () => {
   const st = crear(1, 3);
-  avanzar(st, 1.5);
+  avanzar(st, INICIO);
   cierto(nombres(st).includes('listo:0'), 'empieza el nivel');
   st.balls = [{ s: 1, x: st.ps[0].x, y: 300, vx: 0, vy: 0 }];
   paso(st, [disparo], DT);
@@ -401,13 +406,13 @@ prueba('Eventos: escudo roto, muerte y fin de partida', () => {
   cierto(nombres(st).includes('escudo:0'), 'escudo');
   avanzar(st, 1.2);
   st.balls = [{ s: 2, x: st.ps[0].x, y: FLOOR - 20, vx: 0, vy: 0 }];
-  avanzar(st, 1.5);
+  avanzar(st, 1.5 + CONTINUAR_SEG);
   const l = nombres(st);
   cierto(l.includes('muerte:0'), 'muerte'); cierto(l.includes('fin:0'), 'fin de partida');
 });
 
 prueba('Eventos: arpón fijo clavado, objeto que cae y objeto recogido', () => {
-  const st = crear(1, 5, { prueba: ['reloj'] }); avanzar(st, 1.5); soloLejos(st); nombres(st);
+  const st = crear(1, 5, { prueba: ['reloj'] }); avanzar(st, INICIO); soloLejos(st); nombres(st);
   st.ps[0].arma = ARMAS.indexOf('fijo');
   paso(st, [disparo], DT); avanzar(st, 1.2);
   cierto(nombres(st).includes('clavado:0'), 'clavado');
@@ -431,7 +436,7 @@ function reventarAqui(st, s = 1) {
 prueba('Tiempo: el nivel 1 da 60 s y, al acabarse, se pierde una vida sin perder el arma', () => {
   const st = crear(1, 9);
   igual(st.tiempo, 60, 'tiempo inicial');
-  avanzar(st, 1.5); soloLejos(st);
+  avanzar(st, INICIO); soloLejos(st);
   st.ps[0].arma = 1; st.tiempo = 0.5;
   avanzar(st, 0.6);
   igual(st.state, 'dead', 'fase'); igual(st.lives, 2, 'vidas'); igual(st.hit, -1, 'nadie tocado'); igual(st.ps[0].arma, 1, 'conserva el arma');
@@ -573,6 +578,147 @@ prueba('La instantánea lleva los bloques y las marcas de las burbujas', () => {
   const d = decodificar(JSON.parse(JSON.stringify(codificar(st))));
   igual(d.bloques.length, 2, 'bloques'); igual(d.bloques[0].duro, true, 'duro'); igual(d.bloques[1].duro, false, 'rompible');
   igual(d.balls[0].s, 3, 'tamaño'); cierto(d.balls[0].hex && d.balls[0].obj, 'hexagonal y de objeto');
+});
+
+// ---------- Bloque C de la spec 004 ----------
+prueba('Hay 20 fases diseñadas en 4 mundos de 5, con datos válidos', () => {
+  igual(FASES.length, 20, 'fases'); igual(MUNDOS.length, 4, 'mundos');
+  FASES.forEach((f, i) => {
+    const n = i + 1, que = 'fase ' + n;
+    igual(f.mundo, mundoDe(n), que + ': mundo');
+    cierto(f.tiempo >= 30 && f.tiempo <= 100, que + ': tiempo');
+    cierto(f.burbujas.length >= 1 && f.burbujas.length <= 5, que + ': burbujas');
+    for (const b of f.burbujas) {
+      cierto(b.s >= 1 && b.s <= 4 && Math.abs(b.dir) === 1, que + ': burbuja');
+      cierto(b.x - R[b.s] >= 0 && b.x + R[b.s] <= W && b.y - R[b.s] >= 0 && b.y + R[b.s] < FLOOR - 120, que + ': burbuja dentro y alta');
+      for (const k of f.bloques) cierto(b.x + R[b.s] < k.x || b.x - R[b.s] > k.x + k.w || b.y + R[b.s] < k.y || b.y - R[b.s] > k.y + k.h, que + ': burbuja fuera de los bloques');
+    }
+    for (const k of f.bloques) cierto(k.x >= 0 && k.x + k.w <= W && k.y >= 100 && k.y + k.h < FLOOR - 80, que + ': bloque dentro y por encima de los jugadores');
+    f.bloques.forEach((a, j) => f.bloques.forEach((c, m) => { if (j < m) cierto(a.x + a.w < c.x || c.x + c.w < a.x || a.y + a.h < c.y || c.y + c.h < a.y, que + ': bloques sin pisarse'); }));
+  });
+  cierto(FASES.slice(0, 10).every((f) => f.burbujas.every((b) => !b.hex)), 'las hexagonales llegan en el mundo 3');
+});
+
+prueba('Cada nivel carga su fase: burbujas, bloques y tiempo; con 2 jugadores, una burbuja más', () => {
+  for (const n of [1, 6, 13, 20]) {
+    const f = FASES[n - 1], st = crear(1, 3, { nivel: n });
+    igual(st.balls.length, f.burbujas.length, 'nivel ' + n + ': burbujas'); igual(st.bloques.length, f.bloques.length, 'nivel ' + n + ': bloques');
+    igual(st.tiempo, f.tiempo, 'nivel ' + n + ': tiempo');
+    f.burbujas.forEach((b, i) => { igual(st.balls[i].s, b.s, 'tamaño'); igual(!!st.balls[i].hex, !!b.hex, 'hexagonal'); igual(!!st.balls[i].obj, !!b.obj, 'de objeto'); });
+    const st2 = crear(2, 3, { nivel: n });
+    igual(st2.balls.length, f.burbujas.length + 1, 'nivel ' + n + ' con 2: una más');
+    igual(st2.balls[st2.balls.length - 1].s, Math.max(1, f.burbujas[0].s - 1), 'un tamaño menos');
+  }
+  const st = crear(1, 3, { nivel: 6 });
+  st.bloques.pop();
+  igual(FASES[5].bloques.length, 3, 'romper bloques no cambia la fase diseñada');
+});
+
+prueba('Desde la fase 21 se generan con la semilla y van a más', () => {
+  const a = crear(1, 77, { nivel: 21 }), b = crear(1, 77, { nivel: 21 });
+  igual(JSON.stringify(a.balls), JSON.stringify(b.balls), 'misma semilla, misma fase');
+  igual(JSON.stringify(a.bloques), JSON.stringify(b.bloques), 'mismos bloques');
+  let pocas = 0, muchas = 0;
+  for (let sem = 1; sem <= 20; sem++) {
+    const s1 = crear(1, sem, { nivel: 21 }), s2 = crear(1, sem, { nivel: 45 });
+    pocas += s1.balls.length; muchas += s2.balls.length;
+    for (const st of [s1, s2]) {
+      cierto(st.tiempo > 0 && st.tiempo <= 100, 'tiempo');
+      for (const k of st.bloques) cierto(k.y + k.h < FLOOR - 80 && k.x >= 0 && k.x + k.w <= W, 'bloques dentro');
+    }
+  }
+  cierto(muchas > pocas, 'más burbujas en la 45 que en la 21');
+  const m = crear(1, 5, { nivel: 22 }), antes = JSON.stringify(m.bloques);
+  avanzar(m, READY_SEG + 0.1);
+  m.balls = [{ s: 2, x: m.ps[0].x, y: FLOOR - 20, vx: 0, vy: 0 }]; avanzar(m, 1.4);
+  igual(JSON.stringify(m.bloques), antes, 'al morir se repite la misma fase');
+  cierto(JSON.stringify(crear(1, 5, { nivel: 23 }).bloques) !== antes, 'la siguiente es distinta');
+});
+
+prueba('Mundos: anuncio al empezar el 1, el 2…, pero no al repetir una fase tras morir', () => {
+  igual(mundoDe(5), 1, 'fase 5'); igual(mundoDe(6), 2, 'fase 6'); igual(mundoDe(21), 5, 'fase 21: mundo 5');
+  igual(fondoDe(16), 3, 'fondo del volcán'); igual(fondoDe(21), 0, 'los mundos generados repiten fondos');
+  cierto(empiezaMundo(1) && empiezaMundo(6) && !empiezaMundo(7), 'primeras fases');
+  const st = crear(1, 4); nombres(st);
+  igual(st.t, MUNDO_SEG, 'cuenta larga en la fase 1');
+  avanzar(st, INICIO);
+  st.balls = [{ s: 2, x: st.ps[0].x, y: FLOOR - 20, vx: 0, vy: 0 }];
+  avanzar(st, 1.4);
+  igual(st.state, 'ready', 'repite la fase'); cierto(st.t <= READY_SEG, 'sin anuncio');
+  const c = crear(1, 4, { nivel: 5 }); avanzar(c, READY_SEG + 0.1); nombres(c);
+  c.balls = []; reventarAqui(c); avanzar(c, 2.3);
+  igual(c.lvl, 6, 'pasa a la fase 6'); igual(c.t > READY_SEG, true, 'anuncia el mundo 2'); cierto(nombres(c).includes('mundo:0'), 'suena');
+});
+
+// ---------- Bloque D de la spec 004 ----------
+function sinVidas(st) {
+  st.lives = 1; st.ps[0].arpones.length = 0;
+  st.balls = [{ s: 2, x: st.ps[0].x, y: FLOOR - 20, vx: 0, vy: 0 }];
+  avanzar(st, 1.4);
+  igual(st.state, 'continuar', 'cuenta para continuar');
+}
+
+prueba('Continuar: disparo sigue en la misma fase con los puntos a 0 y las vidas del principio', () => {
+  const st = crear(1, 8, { nivel: 3 }); avanzar(st, READY_SEG + 0.1);
+  st.score = 12345; st.proximaVida = 50000;
+  sinVidas(st); nombres(st);
+  avanzar(st, 2.2);
+  cierto(nombres(st).filter((e) => e.startsWith('aviso')).length >= 2, 'suena cada segundo');
+  paso(st, [disparo], DT);
+  igual(st.state, 'ready', 'vuelve a jugar'); igual(st.lvl, 3, 'misma fase'); igual(st.score, 0, 'puntos a 0'); igual(st.lives, 3, 'vidas iniciales');
+  igual(st.proximaVida, 20000, 'vida extra desde el principio'); igual(st.mejor.p, 12345, 'se guarda lo mejor'); igual(st.mejor.f, 3, 'y su fase');
+  cierto(nombres(st).includes('continua:0'), 'suena');
+});
+
+prueba('Continuar: el disparo que se traía pulsado no cuenta; sin pulsar, fin de partida', () => {
+  const st = jugando(2);
+  st.lives = 1;
+  st.balls = [{ s: 2, x: st.ps[0].x, y: FLOOR - 20, vx: 0, vy: 0 }];
+  const fuego = [disparo, nada()];
+  avanzar(st, 1.4, fuego);
+  avanzar(st, 3, fuego);
+  igual(st.state, 'continuar', 'mantener pulsado no continúa');
+  avanzar(st, CONTINUAR_SEG);
+  igual(st.state, 'over', 'fin de partida');
+});
+
+prueba('Continuar con 2 jugadores: cualquiera puede seguir y vuelven las 5 vidas', () => {
+  const st = jugando(2);
+  st.lives = 1;
+  st.balls = [{ s: 2, x: st.ps[0].x, y: FLOOR - 20, vx: 0, vy: 0 }];
+  avanzar(st, 1.4);
+  paso(st, [nada(), disparo], DT);
+  igual(st.state, 'ready', 'sigue'); igual(st.lives, 5, 'vidas');
+});
+
+prueba('La instantánea lleva la cuenta para continuar y lo mejor de la partida', () => {
+  const st = jugando(2);
+  st.score = 777; st.lives = 1;
+  st.balls = [{ s: 2, x: st.ps[0].x, y: FLOOR - 20, vx: 0, vy: 0 }];
+  avanzar(st, 1.4);
+  const d = decodificar(JSON.parse(JSON.stringify(codificar(st))));
+  igual(d.state, 'continuar', 'fase'); cierto(Math.abs(d.t - st.t) < 0.1, 'cuenta'); igual(d.mejor.p, 777, 'mejor'); igual(d.mejor.f, 1, 'fase del mejor');
+  igual(decodificar({ b: [], p: [], mp: -5, mf: 9999 }).mejor.f, 999, 'valida lo recibido');
+});
+
+prueba('Récords: top 10 ordenado, entra solo si supera al último, empate debajo', () => {
+  let l = [];
+  for (let i = 1; i <= 12; i++) l = insertar(l, { p: i * 100, i: 'AAA', f: 1 }).lista;
+  igual(l.length, MAX_RECORDS, 'como mucho 10'); igual(l[0].p, 1200, 'el mejor arriba'); igual(l[9].p, 300, 'el décimo');
+  cierto(!entra(l, 300), 'empatar con el último no entra'); cierto(entra(l, 301), 'superarlo sí'); cierto(!entra([], 0), 'con 0 puntos no');
+  const r = insertar(l, { p: 800, i: 'BBB', f: 7 });
+  igual(r.pos, 5, 'empate: debajo del que ya estaba'); igual(r.lista[5].i, 'BBB', 'iniciales');
+  igual(insertar(l, { p: 50, i: 'CCC', f: 1 }).pos, -1, 'no entra');
+});
+
+prueba('Récords: se guardan y se leen validando lo que hay en el móvil', () => {
+  const mem = { d: {}, getItem(k) { return this.d[k] ?? null; }, setItem(k, v) { this.d[k] = v; } };
+  igual(leer(mem).length, 0, 'vacío');
+  guardar([{ p: 500, i: 'ABC/XYZ', f: 4 }, { p: 900, i: 'zz', f: 2 }], mem);
+  const l = leer(mem);
+  igual(l.length, 2, 'dos'); igual(l[0].i, 'ZZ', 'ordenado y en mayúsculas'); igual(l[1].i, 'ABC/XYZ', 'dos jugadores');
+  mem.d['rb-records'] = '{roto'; igual(leer(mem).length, 0, 'basura → vacío');
+  igual(limpiar([{ p: 'x', i: 'A' }, { p: 10, i: '<b>' }, { p: 10, i: 'ABCD' }, null]).length, 0, 'descarta entradas raras');
 });
 
 prueba('codificar y decodificar dan el mismo estado (redondeado)', () => {

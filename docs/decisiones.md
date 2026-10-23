@@ -52,8 +52,8 @@ Una entrada por decisión. Nunca se borran; si cambian, se añade una nueva que 
 - Fecha: 2026-10-20 · Actualizada: 2026-10-21 (T001 de 002)
 - Estado: Aceptada
 - Contexto: el juego es anterior a la constitución y funciona.
-- Decisión: sigue con canvas 2D sin Phaser y con menús sin navegación por mando (incumple C3, tarea T013 de 000).
-- Ya resuelto: la red está en `src/net/` (T011 y T014 de 000) y la lógica en `sim.js`, el dibujo en `render.js` y las pruebas en `tests.html` (A1 y Q3, T001 de 002) y el paso fijo de 60 ticks/s (A2, T002 de 002).
+- Decisión: sigue con canvas 2D sin Phaser.
+- Ya resuelto: los menús se navegan con mando (C3, T013 de 000, v0.12.0); la red está en `src/net/` (T011 y T014 de 000) y la lógica en `sim.js`, el dibujo en `render.js` y las pruebas en `tests.html` (A1 y Q3, T001 de 002) y el paso fijo de 60 ticks/s (A2, T002 de 002).
 - Consecuencias: los juegos nuevos no pueden usar esta excepción.
 
 ## D-007 — Cada juego elige su orientación
@@ -95,3 +95,11 @@ Una entrada por decisión. Nunca se borran; si cambian, se añade una nueva que 
 - Decisión: todos los sonidos se sintetizan en el navegador con Web Audio (`src/audio/sintetizador.js`, común a los juegos). Cada juego define sus recetas; `sim.js` solo anota eventos (`st.eventos`) y la página los hace sonar. Silencio común guardado en `rg-silencio`.
 - Alternativas descartadas: archivos de audio (pesan, hay que cachearlos y vigilar licencias); librerías como Howler o jsfxr (dependencia más para algo pequeño).
 - Consecuencias: sonido retro «de chip», sin música por ahora. En online los eventos viajan en la instantánea (campo `e`).
+
+## D-012 — Récord con «continuar»: el mejor tramo de la partida
+- Fecha: 2026-10-23
+- Estado: Aceptada
+- Contexto: continuar pone los puntos a 0 (spec 004, HU-9). Si el récord se apuntara con los puntos al acabar, seguir jugando haría perder la puntuación buena.
+- Decisión: `sim.js` guarda en `st.mejor` lo mejor que se llegó a tener antes de cada «¿continuar?» (puntos y fase), y eso es lo que se ofrece para la tabla al final. Va en la instantánea (`mp`, `mf`) para que el invitado guarde el suyo.
+- Alternativas descartadas: pedir las iniciales en cada «¿continuar?» (corta el ritmo y llena la tabla de la misma partida); sumar todos los tramos (premiaría continuar sin límite).
+- Consecuencias: una partida da como mucho una entrada en la tabla.

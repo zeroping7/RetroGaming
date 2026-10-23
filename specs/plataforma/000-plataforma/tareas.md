@@ -19,7 +19,8 @@
   - Hecho cuando: en la misma WiFi el HUD muestra `DIRECTA` y el retardo baja claramente respecto a MQTT; si se fuerza el fallo, sigue por MQTT
   - Probar en el móvil: partida entre los dos móviles en casa, comparar los ms con los de MQTT
 - [ ] T012 — `?debug=1` y `?lag=&loss=` en `src/net/` (Q1, Q2)
-- [ ] T013 — Navegación con mando en el menú de Revienta Burbujas (C3)
+- [x] T013 — Navegación con mando en el menú de Revienta Burbujas (C3) *(v0.12.0)*
+  - Hecho cuando: con el mando se eligen y pulsan las opciones del menú, «Unirse», «Récords» y la pausa (A pulsa, B vuelve)
 
 ## Fase 2 — Según respuestas de la spec
 - [x] T020 — Pausa común (HU-7, plan §8) *(v0.9.0)*

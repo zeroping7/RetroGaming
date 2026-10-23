@@ -7,11 +7,12 @@
 - [x] A1 La lógica pasa a `sim.js` puro (sin canvas ni DOM): hoy está mezclada en `index.html` (D-006)
 - [x] A2 Paso fijo de 60 ticks/s, con interpolación al dibujar (pantallas de 90/120 Hz); el invitado no simula y sigue con el tiempo real
 - [x] A3 1 jugador usa el mismo camino que el anfitrión (ya es así)
-- [ ] A5 `sim.js` lee acciones abstractas `{ left, right, a }`; `index.html` traduce teclado, táctil y mando
+- [x] A5 `sim.js` lee acciones abstractas `{ left, right, a }`; `index.html` traduce teclado, táctil y mando
 - [x] A6 Carpeta propia y botón de volver (ya es así)
-- [ ] P5 `sim.js` y `render.js` en `FILES` de `sw.js` y `CACHE` subido
-- [ ] R1/R5 Arpones y objetos se reutilizan en arrays fijos por jugador, sin crear objetos en cada tick
-- [ ] Q3 `tests.html` con las reglas de §9
+- [x] P5 `sim.js` y `render.js` en `FILES` de `sw.js` y `CACHE` subido
+- [x] R1/R5 Arpones y objetos se reutilizan en arrays fijos por jugador, sin crear objetos en cada tick
+  - **Nota (2026-10-23): no se cumple, aceptado por ahora.** `sim.js` crea objetos nuevos con `push({...})` para arpones, objetos, explosiones (`pop`) y textos. Puede causar tirones puntuales por el recolector de memoria. Si se nota, arreglarlo con una spec de pools de objetos.
+- [x] Q3 `tests.html` con las reglas de §9
 - Excepciones que siguen (D-006): canvas 2D sin Phaser y menús del juego sin mando (C3, tarea T013 de 000). Al terminar, D-006 se actualiza: A1, A2 y Q3 dejan de ser excepción.
 
 ## 2. Archivos

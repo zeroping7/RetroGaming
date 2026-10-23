@@ -124,6 +124,9 @@ Mirar el color actual y el siguiente → girar el cañón → disparar (directo 
 **HU-6 — Controles.**
 - [x] Dado táctil, teclado o mando, entonces puedo jugar entero y navegar los menús (C1, C3).
 
+**HU-7 — Pantalla completa** (añadida tras la v1, v0.13.1).
+- [x] Dado el botón de pantalla completa (o la tecla F), cuando lo pulso, entonces el juego ocupa toda la pantalla; al pulsarlo otra vez, vuelve. Si el navegador no lo permite (Safari en iPhone), el botón no aparece.
+
 ## 12. Fuera de alcance (v1)
 - 2 jugadores en el mismo dispositivo.
 - Cooperativo.

@@ -43,7 +43,8 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 #share{position:absolute;bottom:24%;left:50%;transform:translateX(-50%);font:inherit;font-size:10px;padding:14px 18px;border:0;border-radius:10px;background:var(--accent);color:#2a1b00;cursor:pointer;white-space:nowrap}
 #snd{position:absolute;top:5px;right:64px;z-index:2;font-size:16px;line-height:1;padding:6px 8px;border:0;border-radius:6px;background:rgba(0,0,0,.4);color:var(--fg);cursor:pointer}
 #pausa i{display:inline-block;width:4px;height:14px;background:currentColor;margin:0 2px;vertical-align:middle}
-#pausa{position:absolute;top:5px;right:110px;z-index:2;font-size:16px;line-height:1;padding:7px 8px;border:0;border-radius:6px;background:rgba(0,0,0,.4);color:var(--fg);cursor:pointer}
+#pc{position:absolute;top:5px;right:110px;z-index:2;line-height:1;padding:7px 8px;border:0;border-radius:6px;background:rgba(0,0,0,.4);color:var(--fg);cursor:pointer}
+#pausa{position:absolute;top:5px;right:152px;z-index:2;font-size:16px;line-height:1;padding:7px 8px;border:0;border-radius:6px;background:rgba(0,0,0,.4);color:var(--fg);cursor:pointer}
 #quit{position:absolute;top:8px;right:8px;font:inherit;font-size:8px;padding:8px;border:0;border-radius:6px;background:rgba(0,0,0,.4);color:var(--fg);cursor:pointer}
 /* récords (spec 004, bloque D) */
 #recs ol{list-style:none;margin:0;padding:0;width:280px;max-width:100%;font-size:9px;line-height:1}
@@ -67,6 +68,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
   <canvas id="c" width="400" height="560"></canvas>
   <button id="quit" hidden>SALIR</button>
   <button id="snd" aria-label="Sonido"></button>
+  <button id="pc" aria-label="Pantalla completa" hidden></button>
   <button id="pausa" aria-label="Pausa" hidden><i></i><i></i></button>
   <button id="share" hidden>COMPARTIR ENLACE</button>
   <div class="menu" id="menu">
@@ -115,6 +117,7 @@ import { dibujar } from './render.js';
 import { crearAudio } from '../../src/audio/sintetizador.js';
 import { RECETAS } from './sonidos.js';
 import { crearPausa } from '../../src/pantalla/pausa.js';
+import { botonPantallaCompleta } from '../../src/pantalla/completa.js';
 import { crearEntradas } from '../../src/input/entradas.js';
 import { leer as leerRecords, guardar as guardarRecords, entra, insertar, LETRAS } from './records.js';
 
@@ -130,6 +133,8 @@ function pintarSnd(){const b=$('snd');b.textContent=audio.silencio?'🔇':'🔊'
 $('snd').onclick=e=>{e.stopPropagation();audio.alternar();pintarSnd();$('snd').blur()};
 addEventListener('keydown',e=>{if((e.key==='m'||e.key==='M')&&!(e.target&&e.target.tagName==='INPUT')){audio.alternar();pintarSnd()}});
 pintarSnd();
+// Pantalla completa (spec 005, HU-7): botón común de src/pantalla/completa.js
+botonPantallaCompleta($('pc'));
 // Suena una lista plana de pares [código, dato]. `yo`: jugador cuyos disparos ya sonaron (invitado)
 function sonar(lista,yo=-1){
   for(let i=0;i+1<lista.length&&i<128;i+=2){

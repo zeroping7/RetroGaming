@@ -1,4 +1,4 @@
-// Gatos de Lanza Burbujas en pixel art (spec 005, §6). Diseño propio a partir de las fotos de
+// Gatos de RetroGaming en pixel art (spec 005 §6 de Lanza Burbujas y spec 006 de Revienta Burbujas). Diseño propio a partir de las fotos de
 // los gatos del usuario: J1 es el atigrado con pecho y patas blancas; J2, la gata tricolor.
 // Los rivales CPU son el mismo dibujo con otros pelajes. Solo genera lienzos: no sabe nada de Phaser.
 

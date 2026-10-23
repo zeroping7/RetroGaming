@@ -1,6 +1,16 @@
 // Dibujo de Revienta Burbujas en canvas 2D. Solo lee el estado: nunca lo cambia.
 import { W, H, FLOOR, R, TIPOS, ARMAS, TAM_OBJETO, OBJ_EN_SUELO, OBJ_PARPADEO, AVISO_TIEMPO, READY_SEG } from './sim.js';
 import { MUNDOS, mundoDe, fondoDe } from './fases.js';
+import { lienzoGato, GATOS } from '../../src/arte/gatos.js';
+
+// Jugadores: los gatos de Lanza Burbujas (spec 006). J1 atigrado, J2 tricolor.
+// Lienzos de cada pose, hechos una vez (R5); el gato mira hacia donde anda.
+const ESCALA_GATO = 1.5, CENTRO_GATO = 10; // el cuerpo ocupa las columnas 0-19 del dibujo (la cola, 20-23)
+let lienzosGatos = null;
+function gatoDe(i, pose) {
+  if (!lienzosGatos) lienzosGatos = [GATOS.j1, GATOS.j2].map((g) => Object.fromEntries(['sentado', 'parpadeo', 'feliz', 'triste'].map((p) => [p, lienzoGato(g, p)])));
+  return lienzosGatos[i][pose];
+}
 
 const COL = ['', '#ff6fae', '#5ee6c2', '#6fa8ff', '#ff7a4d'];
 const PCOL = [{ body: '#2ec4b6', hat: '#e94f37', shot: '#ffcf3a' }, { body: '#ff8fc7', hat: '#7b5cff', shot: '#ff8fc7' }];
@@ -255,11 +265,18 @@ export function dibujar(x, st, v) {
       x.beginPath(); x.ellipse(px, by + p.h / 2 - 2, p.w / 2 + 7, p.h / 2 + 7, 0, 0, 7); x.stroke();
       x.globalAlpha = 1;
     }
-    x.fillStyle = c.body; x.fillRect(bx + 3, by + 12, p.w - 6, p.h - 12);
-    x.fillStyle = '#ffd9b0'; x.fillRect(bx + 6, by, p.w - 12, 13);
-    x.fillStyle = '#0d0b1f'; x.fillRect(bx + 9, by + 5, 3, 3); x.fillRect(bx + p.w - 12, by + 5, 3, 3);
-    x.fillStyle = c.hat; x.fillRect(bx + 4, by - 3, p.w - 8, 5);
-    if (st.n > 1) { x.fillStyle = '#f4f1ff'; x.font = `7px ${FUENTE}`; x.textAlign = 'center'; x.fillText(i === yo ? 'TÚ' : 'J' + (i + 1), px, by - 8); }
+    let pose = 'sentado';
+    if (st.state === 'dead' && st.hit === i) pose = 'triste';
+    else if (p.arpones.length) pose = 'feliz';
+    else if (Math.floor(v.ahora / 400 + i * 3) % 11 === 0) pose = 'parpadeo';
+    const lz = gatoDe(i, pose), ancho = lz.width * ESCALA_GATO, alto = lz.height * ESCALA_GATO;
+    x.save();
+    x.imageSmoothingEnabled = false;
+    x.translate(px, FLOOR);
+    if (p.dir < 0) x.scale(-1, 1); // mira hacia donde va
+    x.drawImage(lz, -CENTRO_GATO * ESCALA_GATO, -alto, ancho, alto);
+    x.restore();
+    if (st.n > 1) { x.fillStyle = '#f4f1ff'; x.font = `7px ${FUENTE}`; x.textAlign = 'center'; x.fillText(i === yo ? 'TÚ' : 'J' + (i + 1), px, FLOOR - 22 * ESCALA_GATO - 6); }
   });
 
   x.font = `10px ${FUENTE}`;

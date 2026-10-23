@@ -4,7 +4,7 @@
 import { ANCHO, ALTO, R, D, FILA, COLS, FILAS, LINEA, CANON_X, CANON_Y, PRISA, AVISO_PRISA, EVENTOS,
   T_MUNDO, TECHO_VS, RONDAS_GANAR, RIVALES, ancho, centroX, centroY, celda, trayectoria, temblando, bonusCaida } from './sim.js';
 import { COLORES, MUNDOS, TOTAL_NIVELES, NUM_COLORES } from './niveles.js';
-import { lienzoGato, GATOS, GATOS_RIVALES, POSES, ALTO_GATO } from './gatos.js';
+import { lienzoGato, GATOS, GATOS_RIVALES, POSES, ALTO_GATO } from '../../src/arte/gatos.js';
 import { RIVALES_CPU } from './cpu.js';
 
 export const W = 640, H = 360;

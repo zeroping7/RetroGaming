@@ -13,6 +13,7 @@ src/
   pantalla/orientacion.js # vigilarOrientacion(id): capa "Gira el móvil" según el registro (§7)
   audio/sintetizador.js  # crearAudio(recetas): sonidos con Web Audio y silencio común (D-011)
   pantalla/pausa.js      # crearPausa(): capa de pausa común (plan de 000, §8)
+  arte/gatos.js          # gatos en pixel art (J1 atigrado, J2 tricolor y rivales), comunes a los juegos
   pantalla/completa.js   # botonPantallaCompleta(boton): pantalla completa con botón y tecla F
 juegos/
   registro.js            # lista de juegos del menú (§3)
@@ -22,7 +23,7 @@ juegos/
     icono.png            # favicon del juego (opcional)
     sim.js render.js tests.html   # estructura para juegos nuevos (constitución A1, Q3)
     fases.js records.js           # (Revienta Burbujas) fases diseñadas y tabla de récords
-    niveles.js cpu.js gatos.js    # (Lanza Burbujas) 30 niveles, rivales CPU y gatos en pixel art
+    niveles.js cpu.js             # (Lanza Burbujas) 30 niveles y rivales CPU
 sw.js  manifest.webmanifest  icon-192.png  icon-512.png   # app instalable de todo el sitio
 docs/  CLAUDE.md
 specs/

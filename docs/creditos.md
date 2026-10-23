@@ -8,4 +8,4 @@
 | Arte de Revienta Burbujas y del menú | juegos/revienta-burbujas, iconos | propio | — |
 | Phaser 3.90.0 | dibujo de Lanza Burbujas | Phaser Studio | MIT |
 | Arte de Lanza Burbujas (burbujas, fondos, portada, icono) | juegos/lanza-burbujas | propio (dibujado con código) | — |
-| Gatos de Lanza Burbujas | juegos/lanza-burbujas/gatos.js | propio, pixel art a partir de fotos de los gatos del usuario | — |
+| Gatos (jugadores de Lanza Burbujas y Revienta Burbujas) | src/arte/gatos.js | propio, pixel art a partir de fotos de los gatos del usuario | — |

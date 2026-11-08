@@ -129,8 +129,11 @@ body.en-menu .pad{display:none}
 // Las reglas están en sim.js, la CPU en cpu.js y el dibujo en render.js (constitución A1).
 import * as S from './sim.js';
 import { crearCpu, pensar } from './cpu.js';
-import { crearAudio } from '../../src/audio/sintetizador.js';
+import { crearAudio, pintarBotonSonido } from '../../src/audio/sintetizador.js';
 import { RECETAS } from './sonidos.js';
+import { crearMusica } from '../../src/audio/musica.js';
+import { CANCIONES, TEMAS } from './musica.js';
+import { NIVELES_POR_MUNDO } from './niveles.js';
 import { crearPausa } from '../../src/pantalla/pausa.js';
 import { botonPantallaCompleta } from '../../src/pantalla/completa.js';
 import { crearEntradas } from '../../src/input/entradas.js';
@@ -150,7 +153,7 @@ const vista = { yo: 0, alfa: 1, record: 0, red: '', guia: true, salir: false, si
 
 /* ---------- sonido (D-011) ---------- */
 const audio = crearAudio(RECETAS);
-function pintarSnd() { const b = $('snd'); b.textContent = audio.silencio ? '🔇' : '🔊'; b.setAttribute('aria-pressed', String(!audio.silencio)); }
+function pintarSnd() { pintarBotonSonido($('snd'), audio); }
 $('snd').onclick = (e) => { e.stopPropagation(); audio.alternar(); pintarSnd(); $('snd').blur(); };
 addEventListener('keydown', (e) => { if ((e.key === 'm' || e.key === 'M') && !(e.target && e.target.tagName === 'INPUT')) { audio.alternar(); pintarSnd(); } });
 pintarSnd();
@@ -564,6 +567,28 @@ function fotograma() {
   vista.red = sala ? code + '\n\n' + netInfo() + (sala.retardoMedido ? '\n\n' + Math.round(sala.retardo) + ' ms' : '') : '';
   if (DEPURAR) depurar(dt);
   render.dibujar(st, vista, dt);
+  elegirMusica();
+}
+// Música (spec 009): menú, un tema por mundo, duelo en VS y «final» contra la REINA. Más rápida con la
+// prisa o el techo a punto de bajar; más intensa en el último nivel del mundo. Calla en pausa y en las
+// pantallas de fin de nivel o ronda, para que se oigan las fanfarrias.
+const musica = crearMusica(audio, CANCIONES), opMus = { tempo: 1, intensidad: 0 };
+function elegirMusica() {
+  let id = null; opMus.tempo = 1; opMus.intensidad = 0;
+  if (!st) id = mode === 'menu' ? 'menu' : null;
+  else if (pausaActual() || (st.fase !== 'listo' && st.fase !== 'juego')) id = null;
+  else if (st.modo === 'niveles') {
+    id = TEMAS[Math.max(0, st.mundo) % TEMAS.length];
+    if (st.nivel % NIVELES_POR_MUNDO === 0) opMus.intensidad = 1;
+  } else {
+    const final = st.modo === 'cpu' && st.rival >= S.RIVALES - 1;
+    id = final ? 'final' : 'duelo';
+    if (final || st.ronda >= 3) opMus.intensidad = 1;
+    if (st.techoT >= S.TECHO_VS - S.AVISO_TECHO_VS) opMus.tempo = 1.15;
+  }
+  const t = st && st.tab[Math.min(vista.yo | 0, st.tab.length - 1)];
+  if (t && st.fase === 'juego' && t.prisa >= S.PRISA - S.AVISO_PRISA) opMus.tempo = 1.2;
+  musica.tocar(id, opMus);
 }
 // ?debug=1 (constitución Q1): FPS, tick, retardo, KB/s y rol
 function depurar(dt) {
@@ -592,7 +617,7 @@ arrancar().catch((e) => { $('cargando').textContent = 'ERROR: ' + e.message; });
 
 if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('../../sw.js').catch(() => {}));
 // Para pruebas automáticas: lectura del estado interno (no se usa en el juego)
-window.__lb = { get render() { return render; }, get mode() { return mode; }, get st() { return st; }, get sala() { return sala; }, get gview() { return gview; }, get code() { return code; }, get ini() { return ini; }, get pausa() { return pausaActual(); }, get vista() { return vista; } };
+window.__lb = { get musica() { return musica.actual; }, get render() { return render; }, get mode() { return mode; }, get st() { return st; }, get sala() { return sala; }, get gview() { return gview; }, get code() { return code; }, get ini() { return ini; }, get pausa() { return pausaActual(); }, get vista() { return vista; } };
 </script>
 </body>
 </html>

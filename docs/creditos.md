@@ -9,3 +9,4 @@
 | Phaser 3.90.0 | dibujo de Lanza Burbujas | Phaser Studio | MIT |
 | Arte de Lanza Burbujas (burbujas, fondos, portada, icono) | juegos/lanza-burbujas | propio (dibujado con código) | — |
 | Gatos (jugadores de Lanza Burbujas y Revienta Burbujas) | src/arte/gatos.js | propio, pixel art a partir de fotos de los gatos del usuario | — |
+| Música de Revienta Burbujas y Lanza Burbujas | juegos/*/musica.js | propia (compuesta como texto y sintetizada con Web Audio, D-015) | — |

@@ -114,8 +114,11 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline
 // y el dibujo en render.js (constitución A1).
 import { W, VEL_JUGADOR, crear, paso, moverBurbujas, moverObjetos, moverTextos, arponesYBloques, disparar, moverArpones, codificar, decodificar, TIPOS, EVENTOS } from './sim.js';
 import { dibujar } from './render.js';
-import { crearAudio } from '../../src/audio/sintetizador.js';
+import { crearAudio, pintarBotonSonido } from '../../src/audio/sintetizador.js';
 import { RECETAS } from './sonidos.js';
+import { crearMusica } from '../../src/audio/musica.js';
+import { CANCIONES, TEMAS } from './musica.js';
+import { fondoDe, FASES_POR_MUNDO } from './fases.js';
 import { crearPausa } from '../../src/pantalla/pausa.js';
 import { botonPantallaCompleta } from '../../src/pantalla/completa.js';
 import { crearEntradas } from '../../src/input/entradas.js';
@@ -129,10 +132,24 @@ try{best=+localStorage.getItem('rb-best')||0}catch(e){}
 
 /* ---------- sonido (spec 003): sim.js anota eventos y aquí suenan ---------- */
 const audio=crearAudio(RECETAS),pendRed=[];
-function pintarSnd(){const b=$('snd');b.textContent=audio.silencio?'🔇':'🔊';b.setAttribute('aria-pressed',String(!audio.silencio))}
+function pintarSnd(){pintarBotonSonido($('snd'),audio)}
 $('snd').onclick=e=>{e.stopPropagation();audio.alternar();pintarSnd();$('snd').blur()};
 addEventListener('keydown',e=>{if((e.key==='m'||e.key==='M')&&!(e.target&&e.target.tagName==='INPUT')){audio.alternar();pintarSnd()}});
 pintarSnd();
+// Música (spec 008): tema del menú, tema de cada mundo (más rápido con ≤ 15 s; más intenso en la
+// última fase del mundo) y silencio en pausa y al acabar la fase, para que se oigan las fanfarrias.
+const musica=crearMusica(audio,CANCIONES),opMus={tempo:1,intensidad:0};
+function elegirMusica(){
+  const e=st&&st.state;let id=null;opMus.tempo=1;opMus.intensidad=0;
+  if(mode==='menu'||e==='menu'||e==='wait'||!e)id='menu';
+  else if(pausaActual())id=null;
+  else if((e==='ready'||e==='play'||e==='dead')&&st.lvl){
+    id=TEMAS[fondoDe(st.lvl)];
+    if(e==='play'&&st.tiempo<=15)opMus.tempo=1.2;
+    if(st.lvl%FASES_POR_MUNDO===0)opMus.intensidad=1;
+  }
+  musica.tocar(id,opMus);
+}
 // Pantalla completa (spec 005, HU-7): botón común de src/pantalla/completa.js
 botonPantallaCompleta($('pc'));
 // Suena una lista plana de pares [código, dato]. `yo`: jugador cuyos disparos ya sonaron (invitado)
@@ -326,6 +343,7 @@ function draw(){
   vista.modo=mode;vista.alfa=mode==='guest'?1:alfa;vista.codigo=code;vista.record=best;vista.ahora=performance.now();
   vista.servidores=netInfo();vista.red=vista.servidores+(sala&&sala.retardoMedido?'  '+Math.round(sala.retardo)+'ms':'');
   dibujar(x,st,vista);
+  elegirMusica();
 }
 
 /* ---------- menús ---------- */
@@ -528,7 +546,7 @@ document.querySelectorAll('.pad button').forEach(b=>{
 document.addEventListener('contextmenu',e=>e.preventDefault());
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('../../sw.js').catch(()=>{}));
 // Para pruebas automáticas: lectura del estado interno (no se usa en el juego)
-window.__rb={get ini(){return ini},get mode(){return mode},get code(){return code},get st(){return st},get sala(){return sala},get gview(){return gview},get lastSnap(){return lastSnap},keys,netInfo:()=>netInfo()};
+window.__rb={get musica(){return musica.actual},get ini(){return ini},get mode(){return mode},get code(){return code},get st(){return st},get sala(){return sala},get gview(){return gview},get lastSnap(){return lastSnap},keys,netInfo:()=>netInfo()};
 </script>
 </body>
 </html>

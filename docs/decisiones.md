@@ -119,3 +119,12 @@ Una entrada por decisión. Nunca se borran; si cambian, se añade una nueva que 
 - Decisión: el retardo y la pérdida simulados viven en `src/net/sala.js` (sirven a todos los juegos y el retardo medido los incluye); la sala cuenta los bytes enviados y recibidos. Cada juego pinta su `?debug=1`; Lanza Burbujas es el primero (FPS, tick, rol, ms, KB/s y vía).
 - Alternativas descartadas: simularlo en cada juego envolviendo la sala (el retardo medido no lo vería).
 - Consecuencias: Revienta Burbujas ya puede usar `?lag=&loss=`; le falta su `?debug=1`.
+
+## D-015 — Música con secuenciador propio y fondos animados
+- Fecha: 2026-11-08
+- Estado: Aceptada
+- Contexto: specs 007-009 piden música de fondo por mundo y ambientes animados en los dos juegos, sin romper AR2 (assets propios) ni R1/R5.
+- Decisión: `src/audio/musica.js` toca canciones escritas como texto (notas, acordes y batería) programándolas 0,12 s por adelantado con Web Audio, sobre un canal de música propio de `sintetizador.js`. El botón de sonido tiene 3 modos (`rg-sonido`: todo · efectos · silencio). Cada página elige la canción en cada fotograma según el estado (mundo, fase, prisa) y calla en pausa y en las pantallas de fin, donde suenan las fanfarrias de siempre. Los fondos fijos siguen cacheados; la capa animada usa `src/arte/particulas.js` (arrays fijos) y se pinta en canvas (Revienta) o en un `Graphics` de Phaser (Lanza).
+- Alternativas descartadas: archivos de música (pesan y hay que vigilar licencias); temporizar las notas con `setTimeout` (se desajustan con cualquier tirón); una canción por nivel (50 temas; se pierde la identidad de cada mundo).
+- Consecuencias: nada nuevo viaja por la red. Componer un tema es escribir texto en `juegos/<id>/musica.js`.
+

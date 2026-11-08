@@ -1,6 +1,6 @@
 # Plan técnico: Música y ambientes de Revienta Burbujas
 
-> **Spec:** `specs/revienta-burbujas/008-musica-y-ambientes/spec.md` · **Estado:** En revisión · **Fecha:** 2026-11-08
+> **Spec:** `specs/revienta-burbujas/008-musica-y-ambientes/spec.md` · **Estado:** Aprobado · **Fecha:** 2026-11-08
 > Usa `src/audio/musica.js` y `src/arte/particulas.js` (plan de 007).
 
 ## 1. Constitución
@@ -10,7 +10,7 @@
 ## 2. Archivos
 | Archivo | Cambio |
 |---|---|
-| `juegos/revienta-burbujas/musica.js` (nuevo) | Canciones: `menu`, `pradera`, `desierto`, `oceano`, `volcan` y los jingles `fase` y `fin`. |
+| `juegos/revienta-burbujas/musica.js` (nuevo) | Canciones: `menu`, `pradera`, `desierto`, `oceano` y `volcan`. Al acabar una fase o la partida la música calla y suenan las fanfarrias que ya había en `sonidos.js` (`limpio`, `fin`, `mundo`). |
 | `juegos/revienta-burbujas/index.html` | Elige el tema según el estado (menú → `menu`, juego → tema del mundo de `fondoDe(lvl)`), con `tempo 1.25` si `tiempo ≤ 15` e `intensidad 1` en la 5.ª fase. Botón de sonido con 3 modos. |
 | `juegos/revienta-burbujas/render.js` | `pintarFondo` con más detalle y en planos. Nueva `ambiente(x, i, t)` animada. Suelo y bloques con colores por mundo. |
 
@@ -37,6 +37,6 @@ Suelo y bloques: color por mundo (hierba, arena, coral y roca volcánica). Los b
 El invitado elige la música y el fondo con su copia del estado. Nada nuevo en la red.
 
 ## 6. Pruebas
-- Jugar la fase 1 de cada mundo con `?fase=N` (si no existe, se añade para pruebas) y comprobar el tema y el fondo.
+- Jugar la fase 1 de cada mundo con `?nivel=1`, `6`, `11` y `16` y comprobar el tema y el fondo.
 - Dejar que el tiempo baje de 15 s y comprobar que acelera.
 - Revisar la legibilidad: las burbujas pequeñas se distinguen del fondo en los 4 mundos.

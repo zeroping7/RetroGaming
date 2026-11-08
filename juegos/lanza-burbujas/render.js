@@ -5,6 +5,7 @@ import { ANCHO, ALTO, R, D, FILA, COLS, FILAS, LINEA, CANON_X, CANON_Y, PRISA, A
   T_MUNDO, TECHO_VS, RONDAS_GANAR, RIVALES, ancho, centroX, centroY, celda, trayectoria, temblando, bonusCaida } from './sim.js';
 import { COLORES, MUNDOS, TOTAL_NIVELES, NUM_COLORES } from './niveles.js';
 import { lienzoGato, GATOS, GATOS_RIVALES, POSES, ALTO_GATO } from '../../src/arte/gatos.js';
+import { crearParticulas } from '../../src/arte/particulas.js';
 import { RIVALES_CPU } from './cpu.js';
 
 export const W = 640, H = 360;
@@ -128,6 +129,8 @@ function pintarFondo(x, mundo) {
       x.fillStyle = 'rgba(255,255,255,0.04)'; for (let i = 0; i < W; i += 40) x.fillRect(i, 300, 2, 60);
       x.fillStyle = '#7b3a5e'; x.fillRect(20, 250, 180, 50); x.fillRect(10, 236, 30, 64); x.fillRect(180, 236, 30, 64);
       x.fillStyle = '#9a4a76'; x.fillRect(40, 240, 140, 24);
+      x.fillStyle = '#4a3a5e'; x.fillRect(598, 196, 3, 104); x.fillRect(588, 298, 24, 4); // lámpara de pie
+      x.fillStyle = '#d9b46a'; x.beginPath(); x.moveTo(586, 196); x.lineTo(614, 196); x.lineTo(606, 176); x.lineTo(594, 176); x.fill();
       break;
     }
     case 1: { // EL JARDÍN: sol, colinas, valla y flores
@@ -141,6 +144,7 @@ function pintarFondo(x, mundo) {
       break;
     }
     case 2: { // LOS TEJADOS: noche, luna y chimeneas
+      TEJADOS.chimeneas.length = 0; TEJADOS.ventanas.length = 0;
       estrellas(90, 0.7);
       x.fillStyle = '#f8f0c8'; x.beginPath(); x.arc(520, 70, 34, 0, 7); x.fill();
       x.fillStyle = 'rgba(0,0,0,0.12)'; x.beginPath(); x.arc(510, 62, 8, 0, 7); x.arc(532, 82, 5, 0, 7); x.fill();
@@ -148,8 +152,8 @@ function pintarFondo(x, mundo) {
       while (px < W) {
         const w = 60 + az() * 70, h = 60 + az() * 80, y = H - h;
         x.fillStyle = '#0a0b24'; x.beginPath(); x.moveTo(px, H); x.lineTo(px, y + 20); x.lineTo(px + w / 2, y); x.lineTo(px + w, y + 20); x.lineTo(px + w, H); x.fill();
-        x.fillRect(px + w * 0.7, y - 6, 10, 22);
-        if (az() < 0.7) { x.fillStyle = '#ffcf3a'; x.fillRect(px + w * 0.3, y + 40, 8, 10); }
+        x.fillRect(px + w * 0.7, y - 6, 10, 22); TEJADOS.chimeneas.push(px + w * 0.7 + 5, y - 6);
+        if (az() < 0.7) { x.fillStyle = '#ffcf3a'; x.fillRect(px + w * 0.3, y + 40, 8, 10); TEJADOS.ventanas.push(px + w * 0.3, y + 40); }
         px += w - 4;
       }
       break;
@@ -160,6 +164,8 @@ function pintarFondo(x, mundo) {
       x.fillStyle = '#5a3a2a'; x.fillRect(0, 290, W, 70); x.fillStyle = '#7a5038'; x.fillRect(0, 290, W, 10);
       x.fillStyle = '#e9e6f7'; x.beginPath(); x.ellipse(90, 286, 26, 8, 0, 0, 7); x.fill(); // cuenco
       x.fillStyle = '#4d8dff'; x.fillRect(560, 250, 40, 40); x.fillStyle = '#f4f1ff'; x.fillRect(568, 240, 24, 12); // brick de leche
+      x.fillStyle = '#6a6f8a'; x.fillRect(470, 262, 56, 28); x.fillRect(464, 258, 68, 6); x.fillRect(458, 268, 8, 4); x.fillRect(530, 268, 8, 4); // olla
+      x.fillStyle = '#8a8fb0'; x.fillRect(470, 266, 56, 3);
       break;
     }
     case 4: { // EL DESVÁN: vigas, ventana redonda y cajas
@@ -182,6 +188,70 @@ function pintarFondo(x, mundo) {
     }
   }
   x.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+
+/* ---------- ambiente animado (spec 009, HU-2): Graphics que se repinta cada fotograma ---------- */
+const TEJADOS = { chimeneas: [], ventanas: [] }; // posiciones que deja pintarFondo
+const ESTRELLAS = (() => { const az = azarFijo(4242), l = []; for (let i = 0; i < 28; i++) l.push(az() * W, az() * H * 0.55, az() * 7); return l; })();
+const AMBIENTES = [
+  { p: { n: 20, ancho: W, alto: H, vx: [-3, 3], vy: [-4, 4], vida: [5, 9], tam: [1, 2], vaiven: 5, alfa: 0.4 }, color: 0xf8e8c0 },       // salón: polvo
+  { p: { n: 12, ancho: W, alto: H, vx: [6, 18], vy: [12, 26], vida: [8, 14], tam: [2, 3], vaiven: 12, alfa: 0.6, y0: -0.05, y1: 0.4 }, color: 0xd8a040 }, // jardín: hojas
+  { p: null },                                                                                                                         // tejados
+  { p: { n: 16, ancho: W, alto: H, vx: [-4, 4], vy: [-14, -28], vida: [3, 5], tam: [3, 6], vaiven: 6, alfa: 0.22, x0: 0.73, x1: 0.82, y0: 0.66, y1: 0.72 }, color: 0xffffff }, // cocina: vapor
+  { p: { n: 26, ancho: W, alto: H, vx: [-3, 3], vy: [-3, 3], vida: [5, 10], tam: [1, 2], vaiven: 4, alfa: 0.55, x0: 0.7, x1: 0.95, y0: 0.32, y1: 0.98 }, color: 0xcfe4ff }, // desván: polvo en el rayo
+  { p: null },                                                                                                                         // luna
+];
+function crearAmbiente(esc) {
+  const g = esc.add.graphics();
+  const sist = AMBIENTES.map((a) => (a.p ? crearParticulas(a.p) : null));
+  const humo = [0, 1, 2].map(() => crearParticulas({ n: 6, ancho: W, alto: H, vx: [2, 8], vy: [-8, -16], vida: [3, 5], tam: [2, 4], vaiven: 3, alfa: 0.18, x0: 0, x1: 0, y0: 0, y1: 0 }));
+  let t = 0;
+  return function animar(mundo, dt) {
+    t += dt; g.clear();
+    const p = sist[mundo];
+    if (mundo === 0) { // luz de la lámpara que late
+      g.fillStyle(0xffd890, 0.06 + 0.03 * Math.sin(t * 1.3)); g.fillCircle(600, 190, 42); g.fillCircle(600, 190, 24);
+    } else if (mundo === 1) { // mariposas
+      for (let i = 0; i < 4; i++) {
+        const bx = (i * 173 + t * (14 + i * 3)) % (W + 40) - 20, by = 120 + i * 40 + Math.sin(t * 1.7 + i) * 18, ala = Math.abs(Math.sin(t * 12 + i)) * 3 + 1;
+        g.fillStyle([0xff8fc7, 0xffcf3a, 0xa66bff, 0xf4f1ff][i], 0.75); g.fillRect(bx - ala - 1, by - 2, ala, 3); g.fillRect(bx + 1, by - 2, ala, 3);
+        g.fillStyle(0x1a1022, 0.8); g.fillRect(bx, by - 2, 1, 4);
+      }
+    } else if (mundo === 2 || mundo === 5) { // estrellas que titilan
+      for (let i = 0; i < ESTRELLAS.length; i += 3) {
+        const a = 0.5 + 0.5 * Math.sin(t * 2 + ESTRELLAS[i + 2]);
+        if (a > 0.6) { g.fillStyle(0xffffff, (a - 0.6) * 1.5); g.fillRect(ESTRELLAS[i] - 1, ESTRELLAS[i + 1], 3, 1); g.fillRect(ESTRELLAS[i], ESTRELLAS[i + 1] - 1, 1, 3); }
+      }
+    }
+    if (mundo === 2) { // ventanas que se apagan y humo de chimenea
+      const v = TEJADOS.ventanas;
+      for (let i = 0; i < v.length; i += 2) if (Math.sin(t * 0.35 + i * 1.9) > 0.75) { g.fillStyle(0x0a0b24, 0.92); g.fillRect(v[i], v[i + 1], 8, 10); }
+      const c = TEJADOS.chimeneas;
+      for (let k = 0; k < humo.length && k * 2 < c.length; k++) {
+        const h = humo[k], cx = c[k * 4 % c.length], cy = c[(k * 4 % c.length) + 1];
+        h.actualizar(dt);
+        for (let i = 0; i < h.n; i++) {
+          if (h.x[i] < 30 && h.y[i] < 30) { h.x[i] = cx + h.vx[i] * h.t[i]; h.y[i] = cy + h.vy[i] * h.t[i]; } // nace en la chimenea
+          g.fillStyle(0xb0b4d0, h.a[i]); g.fillRect(h.px(i), h.y[i], h.tam[i], h.tam[i]);
+        }
+      }
+    } else if (mundo === 3) { // luz cálida
+      g.fillStyle(0xff9a3c, 0.03 + 0.02 * Math.sin(t * 0.9)); g.fillRect(0, 0, W, H);
+    } else if (mundo === 5) { // la Tierra brilla y estrellas fugaces
+      g.fillStyle(0x6fb0ff, 0.08 + 0.05 * Math.sin(t * 0.8)); g.fillCircle(560, 70, 38);
+      const ciclo = t % 5;
+      if (ciclo < 0.6) {
+        const k = Math.floor(t / 5), sx = 80 + (k * 137) % 360, sy = 20 + (k * 61) % 80, d = ciclo / 0.6;
+        g.lineStyle(1, 0xffffff, 0.8 * (1 - d)); g.lineBetween(sx + d * 90, sy + d * 30, sx + d * 90 - 18, sy + d * 30 - 6);
+      }
+    }
+    if (p) {
+      p.actualizar(dt);
+      const col = AMBIENTES[mundo].color;
+      for (let i = 0; i < p.n; i++) { if (p.a[i] < 0.01) continue; g.fillStyle(mundo === 1 && i % 2 ? 0x8acb5a : col, p.a[i]); g.fillRect(p.px(i), p.y[i], p.tam[i], p.tam[i]); }
+    }
+  };
 }
 
 /* ---------- escena ---------- */
@@ -230,6 +300,7 @@ function montar(esc) {
   pintarFondo(ctxFondo, 0);
   esc.textures.addCanvas('fondo', cvFondo);
   const fondo = esc.add.image(0, 0, 'fondo').setOrigin(0).setScale(0.5);
+  const animarAmbiente = crearAmbiente(esc);
   let fondoMundo = 0;
   function ponerFondo(m) {
     if (m === fondoMundo) return;
@@ -332,7 +403,7 @@ function montar(esc) {
       b.img.setPosition(b.x + Math.sin(tiempo + b.v) * 8, b.y);
     }
     if (enMenu) {
-      ponerFondo(0);
+      ponerFondo(0); animarAmbiente(0, dt);
       menuGatos[0].setTexture(Math.floor(tiempo * 0.5) % 6 === 0 ? 'g-j1-parpadeo' : 'g-j1-sentado');
       menuGatos[1].setTexture(Math.floor(tiempo * 0.5 + 3) % 7 === 0 ? 'g-j2-parpadeo' : 'g-j2-sentado');
       for (const r of ranuras) r.cont.setVisible(false);
@@ -347,6 +418,7 @@ function montar(esc) {
 
     const vs = st.tab.length === 2;
     ponerFondo(st.modo === 'niveles' ? Math.max(0, st.mundo) : st.modo === 'cpu' ? st.rival % MUNDOS.length : 2);
+    animarAmbiente(fondoMundo, dt);
     const disp = vs ? DISPOSICION_VS : DISPOSICION_1J;
 
     for (let b = 0; b < st.tab.length; b++) {

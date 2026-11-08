@@ -2,18 +2,28 @@
 // Todo se genera con Web Audio: sin archivos de audio ni licencias.
 // Cada juego define sus «recetas» con tono(), ruido() y notas(), y las toca con tocar().
 
-const CLAVE_SILENCIO = 'rg-silencio';  // compartido por todos los juegos
+const CLAVE_SONIDO = 'rg-sonido';      // 'todo' | 'efectos' | 'silencio', compartido por todos los juegos (spec 007)
+const CLAVE_ANTIGUA = 'rg-silencio';   // la de antes: '1' = silencio
+const MODOS = ['todo', 'efectos', 'silencio'];
+export const ICONO_SONIDO = { todo: '🎵', efectos: '🔊', silencio: '🔇' };
+export const NOMBRE_SONIDO = { todo: 'Música y efectos', efectos: 'Solo efectos', silencio: 'Silencio' };
 const VOLUMEN = 0.35;
+const VOLUMEN_MUSICA = 0.5;            // respecto a los efectos
 const SEPARACION = 40;                 // ms mínimos entre dos veces el mismo sonido
 
 /**
  * @param {Record<string, (s: Sinte, dato?: number) => void>} recetas
- * @returns {{ tocar(nombre: string, dato?: number): void, silencio: boolean, alternar(): boolean, activar(): void }}
+ * @returns {{ tocar(nombre: string, dato?: number): void, silencio: boolean, modo: string, musicaActiva: boolean,
+ *   alternar(): string, activar(): void, ctx: AudioContext|null, musica: GainNode|null, ruido: AudioBuffer|null }}
  */
 export function crearAudio(recetas) {
-  let ctx = null, salida = null, ruidoBuf = null;
-  let silencio = false;
-  try { silencio = localStorage.getItem(CLAVE_SILENCIO) === '1'; } catch {}
+  let ctx = null, salida = null, musica = null, ruidoBuf = null;
+  let modo = 'todo';
+  try {
+    const m = localStorage.getItem(CLAVE_SONIDO);
+    if (MODOS.includes(m)) modo = m;
+    else if (localStorage.getItem(CLAVE_ANTIGUA) === '1') modo = 'silencio';
+  } catch {}
   const ultimo = {};
 
   // Los navegadores no dejan sonar nada hasta que el usuario toca o pulsa una tecla
@@ -23,6 +33,7 @@ export function crearAudio(recetas) {
       if (!AC) return;
       ctx = new AC();
       salida = ctx.createGain(); salida.gain.value = VOLUMEN; salida.connect(ctx.destination);
+      musica = ctx.createGain(); musica.gain.value = modo === 'todo' ? VOLUMEN_MUSICA : 0; musica.connect(salida);
       // 1 s de ruido blanco reutilizable (explosiones, pops)
       ruidoBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
       const d = ruidoBuf.getChannelData(0);
@@ -31,6 +42,12 @@ export function crearAudio(recetas) {
     if (ctx.state === 'suspended') ctx.resume().catch(() => {});
   }
   for (const ev of ['pointerdown', 'keydown', 'touchend']) addEventListener(ev, activar, { capture: true, passive: true });
+  // Pestaña oculta o móvil bloqueado: todo calla (y la música no avanza); al volver, sigue
+  document.addEventListener('visibilitychange', () => {
+    if (!ctx) return;
+    if (document.hidden) ctx.suspend().catch(() => {});
+    else if (modo !== 'silencio') ctx.resume().catch(() => {});
+  });
 
   /** @typedef {Object} Sinte  herramientas para las recetas, con `t` = ahora */
   const sinte = {
@@ -67,19 +84,35 @@ export function crearAudio(recetas) {
 
   return {
     tocar(nombre, dato) {
-      if (silencio || !ctx || ctx.state !== 'running' || !recetas[nombre]) return;
+      if (modo === 'silencio' || !ctx || ctx.state !== 'running' || !recetas[nombre]) return;
       const ahora = performance.now();
       if (ahora - (ultimo[nombre] || 0) < SEPARACION) return;
       ultimo[nombre] = ahora;
       try { recetas[nombre](sinte, dato); } catch {}
     },
-    get silencio() { return silencio; },
+    get silencio() { return modo === 'silencio'; },
+    get modo() { return modo; },
+    get musicaActiva() { return modo === 'todo'; },
+    /** Pasa al siguiente modo: todo → solo efectos → silencio → todo */
     alternar() {
-      silencio = !silencio;
-      try { localStorage.setItem(CLAVE_SILENCIO, silencio ? '1' : '0'); } catch {}
-      if (!silencio) activar();
-      return silencio;
+      modo = MODOS[(MODOS.indexOf(modo) + 1) % MODOS.length];
+      try { localStorage.setItem(CLAVE_SONIDO, modo); localStorage.removeItem(CLAVE_ANTIGUA); } catch {}
+      if (musica) musica.gain.setTargetAtTime(modo === 'todo' ? VOLUMEN_MUSICA : 0, ctx.currentTime, 0.05);
+      if (modo !== 'silencio') activar();
+      return modo;
     },
     activar,
+    get ctx() { return ctx; },
+    /** Entrada del canal de música (src/audio/musica.js) */
+    get musica() { return musica; },
+    get ruido() { return ruidoBuf; },
   };
+}
+
+/** Pinta el botón de sonido con el modo actual. */
+export function pintarBotonSonido(boton, audio) {
+  boton.textContent = ICONO_SONIDO[audio.modo];
+  boton.title = NOMBRE_SONIDO[audio.modo];
+  boton.setAttribute('aria-label', 'Sonido: ' + NOMBRE_SONIDO[audio.modo]);
+  boton.setAttribute('aria-pressed', String(audio.modo !== 'silencio'));
 }

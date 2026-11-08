@@ -1,6 +1,6 @@
 # Plan técnico: Música y ambientes de Lanza Burbujas
 
-> **Spec:** `specs/lanza-burbujas/009-musica-y-ambientes/spec.md` · **Estado:** En revisión · **Fecha:** 2026-11-08
+> **Spec:** `specs/lanza-burbujas/009-musica-y-ambientes/spec.md` · **Estado:** Aprobado · **Fecha:** 2026-11-08
 > Usa `src/audio/musica.js` y `src/arte/particulas.js` (plan de 007).
 
 ## 1. Constitución
@@ -10,7 +10,7 @@
 ## 2. Archivos
 | Archivo | Cambio |
 |---|---|
-| `juegos/lanza-burbujas/musica.js` (nuevo) | Canciones: `menu`, `salon`, `jardin`, `tejados`, `cocina`, `desvan`, `luna`, `duelo` (variante `final` para la REINA) y los jingles `nivel`, `gana` y `pierde`. |
+| `juegos/lanza-burbujas/musica.js` (nuevo) | Canciones: `menu`, `salon`, `jardin`, `tejados`, `cocina`, `desvan`, `luna`, `duelo` y `final` (contra la REINA). Al ganar o perder suenan las fanfarrias que ya había en `sonidos.js`. |
 | `juegos/lanza-burbujas/index.html` | Elige el tema según el modo y el mundo, `tempo 1.25` mientras dure la prisa e `intensidad 1` en el nivel 5 del mundo. Botón de sonido con 3 modos. |
 | `juegos/lanza-burbujas/render.js` | `pintarFondo` con más detalle. Capa animada con partículas y elementos propios por mundo, detrás del tablero. |
 

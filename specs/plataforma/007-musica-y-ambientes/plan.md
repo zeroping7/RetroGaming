@@ -1,6 +1,6 @@
 # Plan técnico: Música y ambientes (piezas comunes)
 
-> **Spec:** `specs/plataforma/007-musica-y-ambientes/spec.md` · **Estado:** En revisión · **Fecha:** 2026-11-08
+> **Spec:** `specs/plataforma/007-musica-y-ambientes/spec.md` · **Estado:** Aprobado · **Fecha:** 2026-11-08
 > El contenido de cada juego (canciones y dibujos) está en los planes de 008 y 009.
 
 ## 1. Cumplimiento de la constitución
@@ -21,9 +21,9 @@
 ## 3. Cómo funciona la música
 **Secuenciador con margen («lookahead»):** cada 25 ms un temporizador mira qué notas caen en los próximos 0,1 s y las deja programadas en Web Audio con su hora exacta. Así suena a tiempo aunque el juego dé un tirón. Se parece a meter trabajo en un `Handler` con `postAtTime`: no depende de cuándo te despiertes.
 
-Formato de una canción (texto compacto, fácil de escribir y revisar):
+Formato de una canción (texto compacto, fácil de escribir y revisar; el detalle está en la cabecera de `src/audio/musica.js`):
 ```js
-{ bpm: 120, pasos: 16,                 // pasos por compás (semicorcheas)
+{ bpm: 120, div: 2,                    // pasos por pulso (2 = corcheas)
   voces: {
     melodia: { onda: 'square',   vol: .22, notas: 'E5 . G5 . A5 - - . | ...' },
     bajo:    { onda: 'triangle', vol: .35, notas: 'A2 . . . E2 . . . | ...' },
@@ -34,7 +34,7 @@ Formato de una canción (texto compacto, fácil de escribir y revisar):
 }
 ```
 - `.` silencio, `-` alarga la nota anterior y `|` separa compases (solo para leer).
-- API: `musica.tocar(id, { tempo = 1, intensidad = 0 })` (si ya suena ese `id`, solo ajusta tempo e intensidad), `musica.jingle(id)` (melodía corta que pausa el tema y luego lo retoma o no) y `musica.parar()`.
+- API: `musica.tocar(id, { tempo = 1, intensidad = 0 })` (si ya suena ese `id`, solo ajusta tempo e intensidad; `null` = silencio) y `musica.parar()`. Las fanfarrias cortas siguen siendo recetas de `sonidos.js`.
 - Volumen de la música, más bajo que los efectos (≈ 0,5 de su nivel). Con el modo `efectos` o `silencio`, el secuenciador no programa nada.
 - `visibilitychange` → `ctx.suspend()` / `resume()`: la música se para con la pestaña oculta.
 

@@ -1,6 +1,6 @@
 # Spec de funcionalidad: Música y ambientes (piezas comunes)
 
-> **ID:** 007-musica-y-ambientes · **Estado:** Aprobada · **Fecha:** 2026-11-08
+> **ID:** 007-musica-y-ambientes · **Estado:** Implementada (v0.15.0) · **Fecha:** 2026-11-08
 > Pedida por el usuario: mejorar la experiencia «a tope» con una canción por nivel y ambientes más distintos en los dos juegos. El contenido de cada juego va en 008 (Revienta Burbujas) y 009 (Lanza Burbujas).
 
 ## 1. Problema
@@ -11,18 +11,18 @@ Cada mundo **se oye y se ve distinto**. Al cambiar de mundo, el jugador nota que
 
 ## 3. Historias de usuario
 **HU-1 — Música de fondo.**
-- [ ] Dado que juego, entonces suena en bucle el tema del mundo, sin cortes al volver a empezar.
-- [ ] Dado que cambio de fase dentro del mismo mundo, entonces el tema sigue sin reiniciarse.
-- [ ] Dado que queda poco tiempo o llega el último nivel del mundo, entonces el tema se acelera o se intensifica.
-- [ ] Dado que gano, pierdo o vuelvo al menú, entonces suena una melodía corta o el tema del menú.
+- [x] Dado que juego, entonces suena en bucle el tema del mundo, sin cortes al volver a empezar.
+- [x] Dado que cambio de fase dentro del mismo mundo, entonces el tema sigue sin reiniciarse.
+- [x] Dado que queda poco tiempo o llega el último nivel del mundo, entonces el tema se acelera o se intensifica.
+- [x] Dado que gano, pierdo o vuelvo al menú, entonces suena una melodía corta o el tema del menú.
 
 **HU-2 — Controlar el volumen.**
-- [ ] Dado el botón de sonido, entonces puedo elegir entre todo, solo efectos o silencio. Se recuerda en los dos juegos.
-- [ ] Dado que la pestaña pasa a segundo plano o pauso, entonces la música se para; al volver, sigue.
+- [x] Dado el botón de sonido, entonces puedo elegir entre todo, solo efectos o silencio. Se recuerda en los dos juegos.
+- [x] Dado que la pestaña pasa a segundo plano o pauso, entonces la música se para; al volver, sigue.
 
 **HU-3 — Ambientes con capas.**
-- [ ] Dado un mundo, entonces el fondo tiene 2-3 capas con elementos propios y alguna animación suave: nubes, brasas, peces, estrellas...
-- [ ] Dado que juego, entonces el fondo nunca tapa ni confunde las burbujas: es más oscuro y menos saturado que ellas.
+- [x] Dado un mundo, entonces el fondo tiene 2-3 capas con elementos propios y alguna animación suave: nubes, brasas, peces, estrellas...
+- [x] Dado que juego, entonces el fondo nunca tapa ni confunde las burbujas: es más oscuro y menos saturado que ellas.
 
 ## 4. Requisitos no funcionales
 - Todo es **propio y generado con código**, como ya se hace con los efectos (AR2, D-011): composiciones originales en estilo chiptune, sin archivos de audio ni imágenes descargadas.

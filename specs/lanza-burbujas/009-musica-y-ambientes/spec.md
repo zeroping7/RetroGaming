@@ -1,6 +1,6 @@
 # Spec de funcionalidad: Música y ambientes de Lanza Burbujas
 
-> **ID:** 009-musica-y-ambientes · **Estado:** En revisión · **Fecha:** 2026-11-08
+> **ID:** 009-musica-y-ambientes · **Estado:** Aprobada · **Fecha:** 2026-11-08
 > Usa las piezas comunes de 007.
 
 ## 1. Problema

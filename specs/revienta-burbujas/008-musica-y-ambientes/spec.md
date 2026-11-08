@@ -1,6 +1,6 @@
 # Spec de funcionalidad: Música y ambientes de Revienta Burbujas
 
-> **ID:** 008-musica-y-ambientes · **Estado:** En revisión · **Fecha:** 2026-11-08
+> **ID:** 008-musica-y-ambientes · **Estado:** Aprobada · **Fecha:** 2026-11-08
 > Usa las piezas comunes de 007.
 
 ## 1. Problema

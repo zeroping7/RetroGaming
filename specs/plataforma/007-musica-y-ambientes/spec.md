@@ -1,6 +1,6 @@
 # Spec de funcionalidad: Música y ambientes (piezas comunes)
 
-> **ID:** 007-musica-y-ambientes · **Estado:** En revisión · **Fecha:** 2026-11-08
+> **ID:** 007-musica-y-ambientes · **Estado:** Aprobada · **Fecha:** 2026-11-08
 > Pedida por el usuario: mejorar la experiencia «a tope» con una canción por nivel y ambientes más distintos en los dos juegos. El contenido de cada juego va en 008 (Revienta Burbujas) y 009 (Lanza Burbujas).
 
 ## 1. Problema
